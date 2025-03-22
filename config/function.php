@@ -2,77 +2,76 @@
 session_start();
 require 'dbcon.php';
 
-function validate($inputData)
-{
-    global $conn;
-
+// Input Validation
+function validate($inputData) {
     if (is_array($inputData)) {
-        $validatedArray = array_map(function($item) use ($conn) {
-            return trim(mysqli_real_escape_string($conn, $item));
-        }, $inputData);
-        return $validatedArray;
+        return array_map('trim', $inputData);
     }
-
-    return trim(mysqli_real_escape_string($conn, $inputData));
+    return trim($inputData);
 }
 
-function logoutSession(){
-    session_start(); // Ensure session is active
-    $_SESSION = []; // Clear all session data
-    session_unset(); // Unset session variables
-    session_destroy(); // Destroy session
+// Session Management
+function logoutSession() {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $_SESSION = [];
+    session_unset();
+    session_destroy();
+    redirect('index.php', 'You have been logged out successfully.');
 }
 
-function redirect($url, $status)
-{
-    $_SESSION['status'] = $status;
+// Redirection
+function redirect($url, $message, $type = 'success') {
+    $_SESSION['message'] = $message;
+    $_SESSION['message_type'] = $type;
     header("Location: $url");
     exit();
 }
 
-function alertMessage()
-{
-    if(isset($_SESSION['status']))
-    {
-        echo '<div class="alert alert-success">
-            <h4>'.$_SESSION['status'].'</h4>
+// Alert Messages
+function alertMessage() {
+    if (isset($_SESSION['message'])) {
+        $type = $_SESSION['message_type'] ?? 'success';
+        echo '<div class="alert alert-' . htmlspecialchars($type) . '">
+            <h4>' . htmlspecialchars($_SESSION['message']) . '</h4>
         </div>';
-        unset($_SESSION['status']); 
+        unset($_SESSION['message']);
+        unset($_SESSION['message_type']);
     }
 }
 
-function checkParamId($paramType)
-{
-    if(isset($_GET[$paramType]) && !empty($_GET[$paramType]))
-    {
-        return $_GET[$paramType];
+// Parameter ID Check
+function checkParamId($paramType) {
+    if (isset($_GET[$paramType]) && !empty($_GET[$paramType])) {
+        return trim($_GET[$paramType]);
     }
     return 'No id found';
 }
 
-function getAll($tableName)
-{
+// Database Queries (Secure with Prepared Statements)
+function getAll($tableName) {
     global $conn;
+    $table = trim($tableName);
 
-    $table = validate($tableName);
-    $query = "SELECT * FROM `$table`";
-    $result = mysqli_query($conn, $query);
-    return $result;
+    $stmt = $conn->prepare("SELECT * FROM `$table`");
+    $stmt->execute();
+    return $stmt->get_result();
 }
 
-function getById($tableName, $id)
-{
+function getById($tableName, $id) {
     global $conn;
+    $table = trim($tableName);
+    $id = trim($id);
 
-    $table = validate($tableName);
-    $id = validate($id);
-
-    $query = "SELECT * FROM `$table` WHERE id = '$id' LIMIT 1";
-    $result = mysqli_query($conn, $query);
+    $stmt = $conn->prepare("SELECT * FROM `$table` WHERE id = ? LIMIT 1");
+    $stmt->bind_param("i", $id); // 'i' for integer
+    $stmt->execute();
+    $result = $stmt->get_result();
 
     if ($result) {
-        if (mysqli_num_rows($result) == 1) {
-            $row = mysqli_fetch_assoc($result);
+        if ($result->num_rows == 1) {
+            $row = $result->fetch_assoc();
             return [
                 'status' => 200,
                 'message' => 'Fetched Data Successfully',
@@ -85,6 +84,7 @@ function getById($tableName, $id)
             ];
         }
     } else {
+        error_log("Database error in getById: " . $conn->error);
         return [
             'status' => 500,
             'message' => 'Something went wrong'
@@ -92,15 +92,21 @@ function getById($tableName, $id)
     }
 }
 
-function deleteQuery($tableName, $id)
-{
+function deleteQuery($tableName, $id) {
     global $conn;
+    $table = trim($tableName);
+    $id = trim($id);
 
-    $table = validate($tableName);
-    $id = validate($id);
-
-    $query = "DELETE FROM `$table` WHERE id = '$id' LIMIT 1";
-    $result = mysqli_query($conn, $query);
-    return $result;
+    $stmt = $conn->prepare("DELETE FROM `$table` WHERE id = ? LIMIT 1");
+    $stmt->bind_param("i", $id); // 'i' for integer
+    return $stmt->execute();
 }
-?>
+
+// Close connection (optional, can be called at script end)
+function closeConnection() {
+    global $conn;
+    if ($conn) {
+        $conn->close();
+    }
+}
+

@@ -3,7 +3,7 @@ $page_title = "Register Form";
 include('includes/header.php');
 
 if (isset($_SESSION['auth'])) {
-    redirect('dashboard.php', 'You are already logged in');
+    redirect('dashboard.php', 'You are already logged in', 'info');
 }
 ?>
 
@@ -13,7 +13,7 @@ if (isset($_SESSION['auth'])) {
             <div class="col-md-6">
                 <?php alertMessage(); ?>
 
-                <div class="card shadow-sm p-4" style="background-color: white; border-radius: 10px;">
+                <div class="card shadow-sm p-4 mb-4" style="background-color: white; border-radius: 10px;">
                     <div class="card-header text-center" style="background-color: white;">
                         <img src="assets/images/logo.png" alt="Logo" width="80" height="76">
                         <h5 class="mt-3" style="color: #2e7d32;">BPC Document Request System</h5>
@@ -23,7 +23,7 @@ if (isset($_SESSION['auth'])) {
                             <!-- Profile Upload -->
                             <div class="mb-3 text-center">
                                 <label for="profile" class="form-label">Profile Picture</label>
-                                <input type="file" name="profile" id="profile" class="form-control" accept="image/*">
+                                <input type="file" name="profile" id="profile" class="form-control" accept="image/*" max="2000000">
                             </div>
 
                             <!-- First Name and Last Name -->
@@ -75,7 +75,7 @@ if (isset($_SESSION['auth'])) {
                                     <label for="section">Section</label>
                                 </div>
                                 <div class="col-md-6 form-floating">
-                                    <input type="text" name="number" class="form-control" id="number" placeholder="Number" required>
+                                    <input type="text" name="number" class="form-control" id="number" placeholder="Phone Number" required pattern="[0-9]{10,11}" title="Enter a 10-11 digit phone number">
                                     <label for="number">Phone Number</label>
                                 </div>
                             </div>
@@ -83,7 +83,7 @@ if (isset($_SESSION['auth'])) {
                             <!-- Birthday and Gender -->
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6 form-floating">
-                                    <input type="date" name="birthdate" class="form-control" id="birthday" required>
+                                    <input type="date" name="birthdate" class="form-control" id="birthday" required max="<?php echo date('Y-m-d', strtotime('-18 years')); ?>" min="<?php echo date('Y-m-d', strtotime('-100 years')); ?>">
                                     <label for="birthday">Birthday</label>
                                 </div>
                                 <div class="col-md-6 form-floating">
@@ -99,7 +99,7 @@ if (isset($_SESSION['auth'])) {
 
                             <!-- Email -->
                             <div class="form-floating mb-3">
-                                <input type="email" name="email" class="form-control" id="email" placeholder="Email Address" required>
+                                <input type="email" name="email" class="form-control" id="email" placeholder="Email Address" required pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
                                 <label for="email">Email Address</label>
                             </div>
 
@@ -119,7 +119,7 @@ if (isset($_SESSION['auth'])) {
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="checkbox" name="terms" id="terms" required>
                                 <label class="form-check-label" for="terms">
-                                    I agree to the <a href="#" style="color: #2e7d32;">terms and conditions</a>
+                                    I agree to the <a href="terms.php" style="color: #2e7d32;" target="_blank">terms and conditions</a>
                                 </label>
                             </div>
 

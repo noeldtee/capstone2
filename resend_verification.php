@@ -1,0 +1,40 @@
+<?php
+$page_title = "Resend Verification Email";
+include('includes/header.php');
+// Remove navbar.php if not needed or ensure it exists and is relevant
+?>
+
+<div class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <?php alertMessage(); ?>
+
+                <div class="card shadow-sm p-4" style="background-color: white; border-radius: 10px;">
+                    <div class="card-header text-center" style="background-color: white;">
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                            <a href="index.php" class="btn" style="background-color: #2e7d32; color: white; border: none;">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                            <h5 style="color: #2e7d32; margin: 0;">Resend Email Verification</h5>
+                            <span></span> <!-- Spacer to balance the layout -->
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form action="resend_verification_code.php" method="POST">
+                            <div class="form-floating mb-3">
+                                <input type="email" name="email" class="form-control" id="email" placeholder="Enter your email address" required pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
+                                <label for="email">Email Address</label>
+                            </div>
+                            <div class="form-group mb-3">
+                                <button type="submit" name="resend_email_verify_btn" class="btn w-100" style="background-color: #2e7d32; color: white; border: none;">Submit</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include('includes/footer.php'); ?>
