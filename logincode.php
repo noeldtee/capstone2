@@ -73,7 +73,7 @@ if (isset($_POST['loginBtn'])) {
                     break;
                 case 'student':
                 case 'alumni':
-                    redirect('dashboard.php', 'Welcome to the Student Dashboard', 'success');
+                    redirect('users/dashboard.php', 'Welcome to the Student Dashboard', 'success');
                     break;
                 default:
                     redirect('index.php', 'Invalid Role', 'danger');

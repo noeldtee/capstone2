@@ -21,7 +21,7 @@ if (isset($_GET['token'])) {
             $update_result = $stmt->execute();
 
             if ($update_result) {
-                redirect('index.php', 'Email verified successfully. Please login.', 'success');
+                echo "<h2>Email Verified</h2><p>Your email has been verified successfully. <a href='index.php'>Click here to login</a>.</p>";
             } else {
                 redirect('index.php', 'Email not verified. Please try again.', 'danger');
             }

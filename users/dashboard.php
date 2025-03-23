@@ -1,6 +1,6 @@
 <?php
 
-require 'config/function.php';
+require '../config/function.php';
 
 ?>
 
@@ -14,8 +14,8 @@ require 'config/function.php';
         Dashboard
     </title>
 
-    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <link href="https://cdn.lineicons.com/4.0/lineicons.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://maxst.icons8.com/vue-static/landings/line-awesome/line-awesome/1.3.0/css/line-awesome.min.css">
 
@@ -28,7 +28,7 @@ require 'config/function.php';
         <div class="side-content">
             <div class="profile">
                 <!-- Logo -->
-                <div class="profile-img bg-img" style="background-image: url(assets/images/logo.png);"></div>
+                <div class="profile-img bg-img" style="background-image: url(../assets/images/logo.png);"></div>
                 <h5>BPC Document Request System</h>
 
             </div>
@@ -65,7 +65,7 @@ require 'config/function.php';
                         </a>
                     </li>
                     <li class="logout">
-                        <a href="logout">
+                        <a href="../logout.php">
                             <span class="las la-sign-out-alt"></span>
                             <small>Logout</small>
                         </a>
@@ -185,4 +185,4 @@ require 'config/function.php';
         </main>
     </div>
 
-<?php include('includes/footer.php'); ?>
+<?php include('../includes/footer.php'); ?>
