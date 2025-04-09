@@ -1,0 +1,562 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Parkinsans:wght@300..800&family=Poppins:wght@700&family=Roboto:wght@700&display=swap');
+
+:root {
+    --main-color: #22BAA0;
+    --color-dark: #34425A;
+    --text-grey: #B0B0B0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    text-decoration: none;
+    list-style-type: none;
+    box-sizing: border-box;
+    font-family: 'Parkinsans', sans-serif;
+}
+
+body{
+    width: 100%;
+    height: 100vh;
+    background: fff;
+    background-size: cover;
+}
+
+#menu-toggle {
+    display: none;
+}
+
+.sidebar {
+    position: fixed;
+    height: 100%;
+    width: 200px;
+    left: 0;
+    bottom: 0;
+    top: 0;
+    z-index: 100;
+    background: #f6f6f6;
+    transition: left 300ms;
+    text-align: center;
+}
+
+.side-header {
+    box-shadow: 0px 5px 5px -5px rgb(0 0 0 /10%);
+    background: var(--main-color);
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.side-header h3, side-head span {
+    color: #fff;
+    font-weight: 400;
+}
+
+.side-content {
+    height: calc(100% - 60px);
+}
+
+.profile {
+    text-align: center;
+    padding: 1rem 1rem;
+    padding-top: 30px;
+}
+
+.bg-img {
+    background-repeat: no-repeat;
+    background-size: cover;
+    border-radius: 50%;
+    background-size: cover;
+}
+
+.profile-img {
+    height: 200px;
+    width: 200px;
+    display: flex;
+    margin-left: 4.2rem;
+    margin-bottom: .6rem;
+}
+
+.profile-img:hover{
+    transform: translateX(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.profile h5 {
+    color: #000000;
+    font-weight: 600;
+    font-size: medium;
+}
+
+.profile small {
+    color: #000000;
+    font-weight: 600;
+}
+
+.side-menu ul {
+    text-align: center;
+}
+
+.side-menu a {
+    display: block;
+    padding: .5rem 0rem;
+    text-decoration: none;
+    list-style-type: none;
+}
+
+.side-menu a.active {
+    background: #c1efa4 !important;
+    border: black;
+    border-radius: 40px;
+    font-weight: 600;
+}
+.side-menu li{
+    border: black;
+    border-radius: 40px;
+}
+
+.side-menu li:hover{
+    transform: translateX(-3px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.side-menu a.active span, .side-menu a.active small {
+    color: #000000;
+}
+
+.side-menu a span {
+    display: block;
+    text-align: center;
+    font-size: 26px;
+}
+
+.side-menu a span, .side-menu a small {
+    color: #000000;
+}
+
+.side-menu a small {
+    font-size: 12px;
+}
+
+.logout {
+    margin-top: 5rem;
+    position: absolute;
+    bottom: 20px; /* Keep it fixed at the bottom */
+    left: 10%;
+    width: 80%; /* Adjust width for responsiveness */
+    padding: 10px;
+    text-align: center;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+#menu-toggle:checked ~ .sidebar {
+    width: 80px;
+}
+
+#menu-toggle:checked ~ .main-content {
+    margin-left: 80px;
+    width: calc(100% - 80px);
+}
+
+#menu-toggle:checked ~ .main-content header {
+    left: 80px;
+}
+
+#menu-toggle:checked ~ .sidebar .profile,
+#menu-toggle:checked ~ .sidebar .side-menu a small {
+    display: none;
+}
+#menu-toggle:checked ~ .sidebar .side-menu a span {
+    font-size: 1.3rem;
+}
+
+#menu-toggle:checked ~ .sidebar .profile-img {
+    height: 40px; /* Resize for smaller sidebar */
+    width: 40px;
+    margin-left: 10px; /* Center the logo better */
+    transition: all 0.3s ease; /* Smooth resizing */
+}
+
+#menu-toggle:checked ~ .sidebar .profile h5 {
+    display: none; /* Hide the text below the logo */
+}
+
+#menu-toggle:checked ~ .sidebar .profile {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 10px; /* Align the logo properly */
+}
+
+#menu-toggle:checked ~ .sidebar .bg-img {
+    margin: auto; /* Center the background image */
+}
+
+.main-content {
+    margin-left: 200px;
+    width: calc(100% - 200px);
+    transition: margin-left 300ms;
+    height: auto;
+}
+
+header {
+    position: fixed;
+    right: 0;
+    top: 0;
+    left: 200px;
+    z-index: 100;
+    height: 80px;
+    box-shadow: 0px 5px 5px -5px rgb(0 0 0 /10%);
+    background: #fff;
+    transition: left 300ms;
+}
+
+.header-content, .header-menu {
+    display: flex;
+    align-items: center;
+    text-align: center;
+}
+
+.header-content {
+    justify-content: space-between;
+    padding: 0rem 1rem;
+}
+.header-content .toggle:hover{
+    transform: translateY(-2px);
+    transition: ease-in;
+    cursor: pointer;
+}
+
+.header-content label:first-child span {
+    padding-top: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.header-content label {
+    cursor: pointer;
+}
+
+.header-menu {
+    justify-content: flex-end;
+    padding-top: 1.5rem;
+}
+
+.header-menu label,
+.header-menu .notify-icon {
+    margin-right: 2rem;
+    position: relative;
+}
+.header-menu .notify-icon :hover{
+    transform: translateY(-3px);
+    transition: ease-in;
+    cursor: pointer;
+}
+
+.header-menu label span,
+.notify-icon span:first-child {
+    font-size: 1.8rem;
+}
+
+.notify-icon span:last-child {
+    position: absolute;
+    background: var(--main-color);
+    height: 16px;
+    width: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    right: -5px;
+    top: -5px;
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 500;
+}
+
+.user {
+    display: flex;
+    justify-content: center;
+    text-align: center; 
+}
+
+.user h3{
+    padding-right: 30px;
+    margin-top: 8px;
+    font-size: large;
+}
+
+.user a, .bg-img {
+    height: 2.5rem;
+    width: 2.5rem;
+    margin-right: 1rem;
+}
+
+.user a, .bg-img :hover{
+    transform: translateY(-3px);
+    transition: ease-in;
+    cursor: pointer;
+}
+
+
+main {
+    margin-top: 100px;
+}
+
+.page-header {
+    padding: 2rem 2rem;
+    background: #d9e8cb;
+    border: 1px solid black;
+    border-radius: 30px;
+    margin: 0rem 1rem
+}
+
+.page-header h1{
+    color: #000000;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.page-header small {
+    color: #000000;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.page-content {
+    padding: 1.3rem 1rem;
+}
+
+.analytics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-gap: 2rem;
+    margin-top: .5rem;
+    margin-bottom: 1rem;
+}
+
+.card {
+    border: 1px solid black;
+    background: #d9e8cb;
+    padding: .8rem 2rem;
+    border-radius: 15px;
+}
+.card2 {
+    border: 1px solid black;
+    background: #fff;
+    padding: 1rem 2rem;
+    border-radius: 15px;
+}
+
+.card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-head h2 {
+    color: #000000;
+    font-size: 1.8rem;
+    font-weight: 500;
+}
+
+.card-head span {
+    font-size: 3.2rem;
+    color: black;
+}
+
+.card-progress small {
+    color: black;
+    font-size: .9rem;
+    font-weight: 600;
+}
+.card-progress h6 {
+    color: black;
+    font-size: .8rem;
+    font-weight: 400;
+}
+
+.card-head2 {
+    display: flex;
+    justify-content: center;
+    margin-top: 5px;
+}
+
+.card-head2 a {
+    text-align: center;
+    padding: 1rem 1rem;
+    text-decoration: none;
+    color: black;
+    font-size: medium;
+    font-weight: 600px;
+    border: solid black 1px;
+    background: #c1efa4 !important;
+    border-radius: 40px;
+}
+.card-head2 :hover{
+    transform: translateX(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+.card-head2 span {
+    font-size: 3.2rem;
+    color: var(--text-grey);
+}
+
+.records {
+    box-shadow: 0px 5px 5px -5px rgb(0 0 0 / 10%);
+    border-radius: 3px;
+}
+
+.record-header {
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.add, .browse {
+    display: flex;
+    align-items: center;
+}
+
+.add span {
+    display: inline-block;
+    margin-right: .6rem;
+    font-size: .9rem;
+    color: #000000;
+    font-weight: 600;
+    background: #d9e8cb !important;
+}
+
+input, button, select {
+    outline: none;
+}
+
+.add select, .browse input, .browse select {
+    height: 35px;
+    border: 1px solid #b0b0b0;
+    border-radius: 3px;
+    display: inline-block;
+    width: 75px;
+    padding: 0rem .5rem;
+    margin-right: .8rem;
+    color: #000000;
+}
+
+.add button {
+    background: var(--main-color);
+    color: #000000;
+    height: 37px;
+    border-radius: 4px;
+    padding: 0rem 1rem;
+    border: none;
+    font-weight: 600;
+}
+
+.browse input {
+    width: 150px;
+}
+
+.browse select {
+    width: 100px;
+}
+
+.table-responsive {
+    width: 100%;
+    overflow: auto;
+}
+
+table {
+    border: 1px solid black;
+    border-radius: 30px; /* Rounded corners */
+    border-collapse: separate;
+    overflow: hidden; /* Ensures content stays within the rounded corners */
+    width: 100%; /* Optional: Adjust the table width */
+}
+
+table thead tr {
+    background: #fff;
+}
+
+table thead th {
+    padding: 1rem 1rem; /* Simplified padding */
+    text-align: left;
+    color: #090000;
+    font-size: 0.9rem;
+
+}
+
+table tbody td {
+    padding: 1rem 1rem; /* Simplified padding */
+    color: black;
+    font-weight: 600;
+    font-size: 0.9rem;
+    background: #fff;
+}
+
+@media only screen and (max-width: 1200px) {
+    .analytics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media only screen and (max-width: 768px) {
+    .analytics {
+        grid-template-columns: 100%;
+    }
+    
+    .sidebar {
+        padding-top: 60px;
+        left: -200px;
+        z-index: 90;
+    }
+    
+    header {
+        left: 0;
+        width: 100%;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    #menu-toggle:checked ~ .sidebar {
+        left: 0;
+    }
+    
+    #menu-toggle:checked ~ .sidebar {
+        width: 200px;
+    }
+
+    #menu-toggle:checked ~ .sidebar .side-header span {
+        display: inline-block;
+    }
+
+    #menu-toggle:checked ~ .sidebar .profile,
+    #menu-toggle:checked ~ .sidebar .side-menu a small {
+        display: block;
+    }
+
+    #menu-toggle:checked ~ .sidebar .side-menu a span {
+        font-size: 1rem;
+    }
+    
+    #menu-toggle:checked ~ .main-content header {
+        left: 0px;
+    }
+    
+    table {
+        width: 900px;
+    }
+
+}
+
+
+    .password-toggle-icon::before,
+    .password-toggle-icon::after {
+        content: none !important;
+    }

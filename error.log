@@ -1,0 +1,63 @@
+[07-Apr-2025 16:51:30 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[07-Apr-2025 17:26:22 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot delete or update a parent row: a foreign key constraint fails (`bpcregistrar`.`users`, CONSTRAINT `fk_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)) in C:\xampp\htdocs\capstone-admin\admin\course_actions.php:100
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\course_actions.php(100): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\course_actions.php on line 100
+[07-Apr-2025 17:26:38 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot delete or update a parent row: a foreign key constraint fails (`bpcregistrar`.`courses`, CONSTRAINT `courses_ibfk_1` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE NO ACTION) in C:\xampp\htdocs\capstone-admin\admin\department_actions.php:80
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\department_actions.php(80): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\department_actions.php on line 80
+[07-Apr-2025 17:26:43 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot delete or update a parent row: a foreign key constraint fails (`bpcregistrar`.`users`, CONSTRAINT `fk_course_id` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)) in C:\xampp\htdocs\capstone-admin\admin\course_actions.php:100
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\course_actions.php(100): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\course_actions.php on line 100
+[07-Apr-2025 17:29:10 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[07-Apr-2025 17:29:15 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[07-Apr-2025 17:29:21 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[07-Apr-2025 17:29:24 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[07-Apr-2025 17:32:02 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[07-Apr-2025 17:32:05 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[07-Apr-2025 17:32:07 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[07-Apr-2025 17:33:16 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[07-Apr-2025 17:33:46 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot delete or update a parent row: a foreign key constraint fails (`bpcregistrar`.`sections`, CONSTRAINT `sections_ibfk_2` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)) in C:\xampp\htdocs\capstone-admin\admin\course_actions.php:100
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\course_actions.php(100): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\course_actions.php on line 100
+[07-Apr-2025 17:36:45 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[07-Apr-2025 17:36:54 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot delete or update a parent row: a foreign key constraint fails (`bpcregistrar`.`sections`, CONSTRAINT `sections_ibfk_2` FOREIGN KEY (`course_id`) REFERENCES `courses` (`id`)) in C:\xampp\htdocs\capstone-admin\admin\course_actions.php:100
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\course_actions.php(100): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\course_actions.php on line 100
+[07-Apr-2025 17:37:03 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot delete or update a parent row: a foreign key constraint fails (`bpcregistrar`.`courses`, CONSTRAINT `courses_ibfk_1` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE NO ACTION) in C:\xampp\htdocs\capstone-admin\admin\department_actions.php:80
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\department_actions.php(80): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\department_actions.php on line 80
+[07-Apr-2025 17:37:44 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot delete or update a parent row: a foreign key constraint fails (`bpcregistrar`.`users`, CONSTRAINT `fk_year_id` FOREIGN KEY (`year_id`) REFERENCES `school_years` (`id`)) in C:\xampp\htdocs\capstone-admin\admin\school_year_actions.php:88
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\school_year_actions.php(88): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\school_year_actions.php on line 88
+[07-Apr-2025 17:37:58 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot delete or update a parent row: a foreign key constraint fails (`bpcregistrar`.`users`, CONSTRAINT `fk_section_id` FOREIGN KEY (`section_id`) REFERENCES `sections` (`id`)) in C:\xampp\htdocs\capstone-admin\admin\section_actions.php:128
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\section_actions.php(128): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\section_actions.php on line 128
+[09-Apr-2025 05:05:28 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[09-Apr-2025 05:05:31 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[09-Apr-2025 05:05:40 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[09-Apr-2025 05:05:42 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 17
+[09-Apr-2025 05:12:32 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 14
+[09-Apr-2025 05:18:27 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 14
+[09-Apr-2025 05:18:33 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 14
+[09-Apr-2025 05:18:35 Europe/Berlin] PHP Warning:  Constant ACTION_ADD_USER already defined in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 14
+[09-Apr-2025 10:14:46 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Cannot add or update a child row: a foreign key constraint fails (`bpcregistrar`.`courses`, CONSTRAINT `courses_ibfk_1` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE NO ACTION) in C:\xampp\htdocs\capstone-admin\admin\course_actions.php:37
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\course_actions.php(37): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\course_actions.php on line 37

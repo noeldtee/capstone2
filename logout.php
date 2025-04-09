@@ -1,8 +1,5 @@
 <?php
-require 'config/function.php'; // Include function.php for logoutSession() and redirect()
+require 'config/function.php';
 
-// Call the logout function
-logoutSession();
-
-// Redirect to the login page (index.php) after logout
-redirect('index.php', 'You have been logged out successfully.', 'success');
+logoutSession(); // Handles everything: cookies, session, redirect
+?>

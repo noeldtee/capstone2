@@ -1,34 +1,102 @@
-<aside class="sidenav navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-3" style="background-color: #f8f9fa; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-    <div class="sidenav-header">
-        <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
-        <a class="navbar-brand m-0" href="index.php">
-            <h4 style="color: #2e7d32;">BPC</h4>
-        </a>
+<div class="sidebar">
+    <div class="side-content">
+        <div class="profile">
+            <!-- Logo -->
+            <div class="profile-img bg-img" style="background-image: url(../assets/images/Logo.png);"></div>
+            <h5>BPC Document Request System</h5>
+        </div>
+        <div class="side-menu">
+            <ul class="container">
+                <li>
+                    <a href="dashboard.php" class="<?php echo (isset($page_title) && $page_title === 'Admin Dashboard') ? 'active' : ''; ?>">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <small>Dashboard</small>
+                    </a>
+                </li>
+                <li>
+                    <a href="request.php" class="<?php echo (isset($page_title) && $page_title === 'Document Request Management') ? 'active' : ''; ?>">
+                        <i class="fa-solid fa-list-check"></i>
+                        <small>Request Management</small>
+                    </a>
+                </li>
+                <li>
+                    <a href="request_logs.php" class="<?php echo (isset($page_title) && $page_title === 'Request Logs') ? 'active' : ''; ?>">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <small>Request Logs</small>
+                    </a>
+                </li>
+                <li>
+                    <a href="action_logs.php" class="<?php echo (isset($page_title) && $page_title === 'Action Logs') ? 'active' : ''; ?>">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <small>Action Logs</small>
+                    </a>
+                </li>
+                <!-- Settings with Bootstrap Dropdown -->
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Document Management', 'Academic Management', 'Users Management'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-solid fa-gear"></i>
+                        <small>Settings</small>
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="settingsDropdown">
+                        <li>
+                            <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Document Management') ? 'active' : ''; ?>" href="documents.php">
+                                <i class="fa-solid fa-folder-open me-2"></i>
+                                Document Management
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Academic Management') ? 'active' : ''; ?>" href="sections.php">
+                                <i class="fa-solid fa-layer-group me-2"></i>
+                                Academic Management
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Users Management') ? 'active' : ''; ?>" href="students.php">
+                                <i class="fa-solid fa-users me-2"></i>
+                                Users Management
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="admin.php" class="<?php echo (isset($page_title) && $page_title === 'Admin Management') ? 'active' : ''; ?>">
+                        <i class="fa-solid fa-user-shield"></i>
+                        <small>Admin Management</small>
+                    </a>
+                </li>
+                <li class="logout">
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <small>Logout</small>
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
+</div>
 
-    <hr class="horizontal dark mt-0" style="border-color: #dee2e6;">
-    <div class="collapse navbar-collapse w-auto" id="sidenav-collapse-main">
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a class="nav-link" href="index.php" style="color: #2e7d32;">
-                    <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center" style="border: 1px solid #dee2e6;">
-                        <i class="fa fa-home text-dark text-lg"></i>
-                    </div>
-                    <span class="nav-link-text ms-1">Dashboard</span>
-                </a>
-            </li>
+<!-- Logout Confirmation Modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Do you want to logout?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                <button type="button" class="btn btn-primary" id="confirmLogout">Yes</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-            <li class="nav-item mt-3">
-                <a class="nav-link" href="users.php" style="color: #2e7d32;">
-                    <div class="icon icon-shape icon-sm shadow border-radius-md bg-white text-center me-2 d-flex align-items-center justify-content-center" style="border: 1px solid #dee2e6;">
-                        <i class="fa fa-users text-dark text-lg"></i>
-                    </div>
-                    <span class="nav-link-text ms-1">Users</span>
-                </a>
-            </li>
-        </ul>
-    </div>
-    <div class="sidenav-footer mx-3">
-        <a class="btn mt-3 w-100" href="logout.php" style="background-color: #2e7d32; color: white; border: none;">Logout</a>
-    </div>
-</aside>
+<script>
+    // Handle logout confirmation
+    document.getElementById('confirmLogout').addEventListener('click', function() {
+        window.location.href = '../logout.php';
+    });
+</script>

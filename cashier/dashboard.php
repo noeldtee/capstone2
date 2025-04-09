@@ -1,10 +1,10 @@
 <?php
-$page_title = "Student Dashboard";
-include('includes/header.php');
+$page_title = "Cashier Dashboard";
+include('../includes/header.php');
 
 // Restrict to authenticated students/alumni
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['student', 'alumni'])) {
-    redirect('../index.php', 'Please log in as a student or alumni to access this page.', 'warning');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['cashier'])) {
+    redirect('../index.php', 'Please log in as a cashier to access this page.', 'warning');
     exit();
 }
 ?>
@@ -19,4 +19,4 @@ if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSI
     </div>
 </div>
 
-<?php include('includes/footer.php'); ?>
+<?php include('../includes/footer.php'); ?>

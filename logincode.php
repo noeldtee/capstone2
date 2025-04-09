@@ -1,7 +1,34 @@
 <?php
 require 'config/function.php';
 
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 if (isset($_POST['loginBtn'])) {
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        redirect('index.php', 'Invalid CSRF token.', 'danger');
+        exit();
+    }
+
+    // Rate limiting: Allow only 5 login attempts per 2 minutes
+    if (!isset($_SESSION['login_attempts'])) {
+        $_SESSION['login_attempts'] = 0;
+        $_SESSION['login_attempt_time'] = time();
+    }
+
+    if ((time() - $_SESSION['login_attempt_time']) > 120) { // 2 minutes
+        $_SESSION['login_attempts'] = 0;
+        $_SESSION['login_attempt_time'] = time();
+    }
+
+    if ($_SESSION['login_attempts'] >= 5) {
+        redirect('index.php', 'Too many login attempts. Please try again after 5 minutes.', 'danger');
+        exit();
+    }
+
     $emailInput = validate($_POST['email']);
     $passwordInput = validate($_POST['password']);
 
@@ -9,12 +36,14 @@ if (isset($_POST['loginBtn'])) {
     $password = filter_var($passwordInput, FILTER_SANITIZE_STRING);
 
     if (empty($email) || empty($password)) {
+        $_SESSION['login_attempts']++;
         redirect('index.php', 'All fields are mandatory.', 'danger');
         exit();
     }
 
     // Validate email format
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['login_attempts']++;
         redirect('index.php', 'Invalid email format.', 'danger');
         exit();
     }
@@ -47,6 +76,7 @@ if (isset($_POST['loginBtn'])) {
 
             // Set session variables
             $_SESSION['auth'] = true;
+            $_SESSION['user_id'] = $row['id']; // Added: Set user_id
             $_SESSION['role'] = $row['role'];
             $_SESSION['loggedInUser'] = [
                 'firstname' => $row['firstname'],
@@ -56,20 +86,35 @@ if (isset($_POST['loginBtn'])) {
 
             // Handle "Remember Me" functionality
             if (isset($_POST['remember_me'])) {
-                // Set a secure cookie for 30 days (email only for convenience)
-                setcookie('remember_email', $email, time() + (30 * 24 * 60 * 60), '/', '', true, true); // Secure and HttpOnly
+                $remember_token = bin2hex(random_bytes(16));
+                $expires_at = date('Y-m-d H:i:s', strtotime('+30 days'));
+
+                $stmt = $conn->prepare("UPDATE users SET remember_token = ?, remember_expires_at = ? WHERE email = ?");
+                $stmt->bind_param("sss", $remember_token, $expires_at, $email);
+                $stmt->execute();
+
+                setcookie('remember_token', $remember_token, time() + (30 * 24 * 60 * 60), '/', '', false, true);
+            } else {
+                $stmt = $conn->prepare("UPDATE users SET remember_token = NULL, remember_expires_at = NULL WHERE email = ?");
+                $stmt->bind_param("s", $email);
+                $stmt->execute();
+                setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+                setcookie('remember_email', '', time() - 3600, '/', '', false, true);
             }
 
-            // Redirect based on role
+            // Reset login attempts on successful login
+            $_SESSION['login_attempts'] = 0;
+
+            // Redirect based on role (updated paths)
             switch ($row['role']) {
                 case 'admin':
-                    redirect('admin/index.php', 'Welcome Admin', 'success');
+                    redirect('admin/dashboard.php', 'Welcome Admin', 'success');
                     break;
                 case 'staff':
-                    redirect('staff/index.php', 'Welcome Staff', 'success');
+                    redirect('staff/dashboard.php', 'Welcome Staff', 'success');
                     break;
                 case 'cashier':
-                    redirect('cashier/index.php', 'Welcome Cashier', 'success');
+                    redirect('cashier/dashboard.php', 'Welcome Cashier', 'success');
                     break;
                 case 'student':
                 case 'alumni':
@@ -80,10 +125,14 @@ if (isset($_POST['loginBtn'])) {
                     exit();
             }
         } else {
+            error_log("Failed login attempt for email: $email at " . date('Y-m-d H:i:s'));
+            $_SESSION['login_attempts']++;
             redirect('index.php', 'Invalid email or password. Please try again.', 'danger');
             exit();
         }
     } else {
+        error_log("Failed login attempt for email: $email at " . date('Y-m-d H:i:s'));
+        $_SESSION['login_attempts']++;
         redirect('index.php', 'Invalid email or password. Please try again.', 'danger');
         exit();
     }
@@ -92,5 +141,5 @@ if (isset($_POST['loginBtn'])) {
     exit();
 }
 
-// Close database connection
 $conn->close();
+?>
