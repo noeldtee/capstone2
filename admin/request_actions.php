@@ -23,7 +23,7 @@ try {
         case 'archive':
             $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
             if ($id > 0) {
-                $stmt = $conn->prepare("SELECT request_id, status FROM requests WHERE id = ?");
+                $stmt = $conn->prepare("SELECT status FROM requests WHERE id = ?");
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
                 $request = $stmt->get_result()->fetch_assoc();
@@ -32,8 +32,8 @@ try {
                     $stmt = $conn->prepare("UPDATE requests SET archived = 1, updated_at = NOW() WHERE id = ?");
                     $stmt->bind_param("i", $id);
                     if ($stmt->execute()) {
-                        logAction($conn, 'Archive Request', "Request ID: {$request['request_id']}", "Status: {$request['status']}");
-                        $_SESSION['message'] = "Request ID {$request['request_id']} archived successfully.";
+                        logAction($conn, 'Archive Request', "Request ID: $id", "Status: {$request['status']}");
+                        $_SESSION['message'] = "Request ID $id archived successfully.";
                         $_SESSION['message_type'] = "success";
                         $response = ['status' => 'success', 'message' => $_SESSION['message']];
                     } else {
@@ -50,7 +50,7 @@ try {
         case 'retrieve':
             $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
             if ($id > 0) {
-                $stmt = $conn->prepare("SELECT request_id, status FROM requests WHERE id = ?");
+                $stmt = $conn->prepare("SELECT status FROM requests WHERE id = ?");
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
                 $request = $stmt->get_result()->fetch_assoc();
@@ -59,8 +59,8 @@ try {
                     $stmt = $conn->prepare("UPDATE requests SET archived = 0, updated_at = NOW() WHERE id = ?");
                     $stmt->bind_param("i", $id);
                     if ($stmt->execute()) {
-                        logAction($conn, 'Retrieve Request', "Request ID: {$request['request_id']}", "Status: {$request['status']}");
-                        $_SESSION['message'] = "Request ID {$request['request_id']} retrieved successfully.";
+                        logAction($conn, 'Retrieve Request', "Request ID: $id", "Status: {$request['status']}");
+                        $_SESSION['message'] = "Request ID $id retrieved successfully.";
                         $_SESSION['message_type'] = "success";
                         $response = ['status' => 'success', 'message' => $_SESSION['message']];
                     } else {
@@ -77,7 +77,7 @@ try {
         case 'delete':
             $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
             if ($id > 0) {
-                $stmt = $conn->prepare("SELECT request_id, status, file_path FROM requests WHERE id = ?");
+                $stmt = $conn->prepare("SELECT status, file_path FROM requests WHERE id = ?");
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
                 $request = $stmt->get_result()->fetch_assoc();
@@ -91,8 +91,8 @@ try {
                     $stmt = $conn->prepare("DELETE FROM requests WHERE id = ?");
                     $stmt->bind_param("i", $id);
                     if ($stmt->execute()) {
-                        logAction($conn, 'Delete Request', "Request ID: {$request['request_id']}", "Status: {$request['status']}");
-                        $_SESSION['message'] = "Request ID {$request['request_id']} deleted successfully.";
+                        logAction($conn, 'Delete Request', "Request ID: $id", "Status: {$request['status']}");
+                        $_SESSION['message'] = "Request ID $id deleted successfully.";
                         $_SESSION['message_type'] = "success";
                         $response = ['status' => 'success', 'message' => $_SESSION['message']];
                     } else {
@@ -113,15 +113,10 @@ try {
 
             if (!empty($ids)) {
                 $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                $stmt = $conn->prepare("SELECT request_id, status FROM requests WHERE id IN ($placeholders)");
-                $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
-                $stmt->execute();
-                $requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
                 $stmt = $conn->prepare("UPDATE requests SET archived = 1, updated_at = NOW() WHERE id IN ($placeholders)");
                 $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
                 if ($stmt->execute()) {
-                    $request_ids = implode(', ', array_column($requests, 'request_id'));
+                    $request_ids = implode(', ', $ids);
                     logAction($conn, 'Bulk Archive Requests', "Count: " . count($ids), "Request IDs: $request_ids");
                     $_SESSION['message'] = count($ids) . " request(s) archived successfully.";
                     $_SESSION['message_type'] = "success";
@@ -141,7 +136,7 @@ try {
 
             if (!empty($ids)) {
                 $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                $stmt = $conn->prepare("SELECT request_id, status, file_path FROM requests WHERE id IN ($placeholders)");
+                $stmt = $conn->prepare("SELECT status, file_path FROM requests WHERE id IN ($placeholders)");
                 $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
                 $stmt->execute();
                 $requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -149,7 +144,7 @@ try {
                 foreach ($requests as $request) {
                     if ($request['file_path'] && file_exists("../" . $request['file_path'])) {
                         if (!unlink("../" . $request['file_path'])) {
-                            error_log("Failed to delete file for request ID {$request['request_id']}: ../{$request['file_path']}");
+                            error_log("Failed to delete file for request ID: ../{$request['file_path']}");
                         }
                     }
                 }
@@ -157,7 +152,7 @@ try {
                 $stmt = $conn->prepare("DELETE FROM requests WHERE id IN ($placeholders)");
                 $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
                 if ($stmt->execute()) {
-                    $request_ids = implode(', ', array_column($requests, 'request_id'));
+                    $request_ids = implode(', ', $ids);
                     logAction($conn, 'Bulk Delete Requests', "Count: " . count($ids), "Request IDs: $request_ids");
                     $_SESSION['message'] = count($ids) . " request(s) deleted successfully.";
                     $_SESSION['message_type'] = "success";
@@ -173,7 +168,7 @@ try {
         case 'get':
             $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
             if ($id > 0) {
-                $stmt = $conn->prepare("SELECT r.id, r.request_id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
+                $stmt = $conn->prepare("SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
                                                r.price, r.status, r.requested_date, r.file_path, r.remarks, r.rejection_reason 
                                         FROM requests r 
                                         JOIN users u ON r.user_id = u.id 

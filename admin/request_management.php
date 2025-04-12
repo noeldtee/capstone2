@@ -25,12 +25,8 @@ try {
             $stmt = $conn->prepare("UPDATE requests SET status = 'In Process', updated_at = NOW() WHERE id = ? AND status = 'Pending'");
             $stmt->bind_param("i", $id);
             if ($stmt->execute() && $stmt->affected_rows > 0) {
-                $stmt = $conn->prepare("SELECT request_id FROM requests WHERE id = ?");
-                $stmt->bind_param("i", $id);
-                $stmt->execute();
-                $request = $stmt->get_result()->fetch_assoc();
-                logAction($conn, 'Approve Request', "Request ID: {$request['request_id']}", "Status changed to In Process");
-                $_SESSION['message'] = "Request ID {$request['request_id']} approved successfully.";
+                logAction($conn, 'Approve Request', "Request ID: $id", "Status changed to In Process");
+                $_SESSION['message'] = "Request ID $id approved successfully.";
                 $_SESSION['message_type'] = "success";
                 $response = ['status' => 'success', 'message' => $_SESSION['message']];
             } else {
@@ -51,11 +47,7 @@ try {
             if ($stmt->execute()) {
                 $affected = $stmt->affected_rows;
                 if ($affected > 0) {
-                    $stmt = $conn->prepare("SELECT request_id FROM requests WHERE id IN ($placeholders)");
-                    $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
-                    $stmt->execute();
-                    $requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                    $request_ids = implode(', ', array_column($requests, 'request_id'));
+                    $request_ids = implode(', ', $ids);
                     logAction($conn, 'Bulk Approve Requests', "Count: $affected", "Request IDs: $request_ids");
                     $_SESSION['message'] = "$affected request(s) approved successfully.";
                     $_SESSION['message_type'] = "success";
@@ -78,12 +70,8 @@ try {
             $stmt = $conn->prepare("UPDATE requests SET status = 'Rejected', rejection_reason = ?, updated_at = NOW() WHERE id = ? AND status = 'Pending'");
             $stmt->bind_param("si", $reason, $id);
             if ($stmt->execute() && $stmt->affected_rows > 0) {
-                $stmt = $conn->prepare("SELECT request_id FROM requests WHERE id = ?");
-                $stmt->bind_param("i", $id);
-                $stmt->execute();
-                $request = $stmt->get_result()->fetch_assoc();
-                logAction($conn, 'Reject Request', "Request ID: {$request['request_id']}", "Reason: $reason");
-                $_SESSION['message'] = "Request ID {$request['request_id']} rejected successfully.";
+                logAction($conn, 'Reject Request', "Request ID: $id", "Reason: $reason");
+                $_SESSION['message'] = "Request ID $id rejected successfully.";
                 $_SESSION['message_type'] = "success";
                 $response = ['status' => 'success', 'message' => $_SESSION['message']];
             } else {
@@ -109,11 +97,7 @@ try {
             if ($stmt->execute()) {
                 $affected = $stmt->affected_rows;
                 if ($affected > 0) {
-                    $stmt = $conn->prepare("SELECT request_id FROM requests WHERE id IN ($placeholders)");
-                    $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
-                    $stmt->execute();
-                    $requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                    $request_ids = implode(', ', array_column($requests, 'request_id'));
+                    $request_ids = implode(', ', $ids);
                     logAction($conn, 'Bulk Reject Request', "Count: $affected", "Request IDs: $request_ids, Reason: $reason");
                     $_SESSION['message'] = "$affected request(s) rejected successfully.";
                     $_SESSION['message_type'] = "success";
@@ -131,12 +115,8 @@ try {
             $stmt = $conn->prepare("UPDATE requests SET status = 'Ready to Pickup', updated_at = NOW() WHERE id = ? AND status = 'In Process'");
             $stmt->bind_param("i", $id);
             if ($stmt->execute() && $stmt->affected_rows > 0) {
-                $stmt = $conn->prepare("SELECT request_id FROM requests WHERE id = ?");
-                $stmt->bind_param("i", $id);
-                $stmt->execute();
-                $request = $stmt->get_result()->fetch_assoc();
-                logAction($conn, 'Mark Ready Request', "Request ID: {$request['request_id']}", "Status changed to Ready to Pickup");
-                $_SESSION['message'] = "Request ID {$request['request_id']} marked as Ready to Pickup.";
+                logAction($conn, 'Mark Ready Request', "Request ID: $id", "Status changed to Ready to Pickup");
+                $_SESSION['message'] = "Request ID $id marked as Ready to Pickup.";
                 $_SESSION['message_type'] = "success";
                 $response = ['status' => 'success', 'message' => $_SESSION['message']];
             } else {
@@ -157,11 +137,7 @@ try {
             if ($stmt->execute()) {
                 $affected = $stmt->affected_rows;
                 if ($affected > 0) {
-                    $stmt = $conn->prepare("SELECT request_id FROM requests WHERE id IN ($placeholders)");
-                    $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
-                    $stmt->execute();
-                    $requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                    $request_ids = implode(', ', array_column($requests, 'request_id'));
+                    $request_ids = implode(', ', $ids);
                     logAction($conn, 'Bulk Mark Ready Request', "Count: $affected", "Request IDs: $request_ids");
                     $_SESSION['message'] = "$affected request(s) marked as Ready to Pickup.";
                     $_SESSION['message_type'] = "success";
@@ -179,12 +155,8 @@ try {
             $stmt = $conn->prepare("UPDATE requests SET status = 'Completed', updated_at = NOW() WHERE id = ? AND status = 'Ready to Pickup'");
             $stmt->bind_param("i", $id);
             if ($stmt->execute() && $stmt->affected_rows > 0) {
-                $stmt = $conn->prepare("SELECT request_id FROM requests WHERE id = ?");
-                $stmt->bind_param("i", $id);
-                $stmt->execute();
-                $request = $stmt->get_result()->fetch_assoc();
-                logAction($conn, 'Mark Completed Request', "Request ID: {$request['request_id']}", "Status changed to Completed");
-                $_SESSION['message'] = "Request ID {$request['request_id']} marked as Completed.";
+                logAction($conn, 'Mark Completed Request', "Request ID: $id", "Status changed to Completed");
+                $_SESSION['message'] = "Request ID $id marked as Completed.";
                 $_SESSION['message_type'] = "success";
                 $response = ['status' => 'success', 'message' => $_SESSION['message']];
             } else {
@@ -205,11 +177,7 @@ try {
             if ($stmt->execute()) {
                 $affected = $stmt->affected_rows;
                 if ($affected > 0) {
-                    $stmt = $conn->prepare("SELECT request_id FROM requests WHERE id IN ($placeholders)");
-                    $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
-                    $stmt->execute();
-                    $requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                    $request_ids = implode(', ', array_column($requests, 'request_id'));
+                    $request_ids = implode(', ', $ids);
                     logAction($conn, 'Bulk Mark Completed Requests', "Count: $affected", "Request IDs: $request_ids");
                     $_SESSION['message'] = "$affected request(s) marked as Completed.";
                     $_SESSION['message_type'] = "success";

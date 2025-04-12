@@ -1,0 +1,81 @@
+.analytics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-gap: 2rem;
+    margin-top: .5rem;
+    margin-bottom: 1rem;
+}
+
+.card {
+    border: 2px solid black;
+    background: #fff;
+    padding: .8rem 2rem;
+    border-radius: 15px;
+}
+
+.card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-head h2 {
+    color: #2c5e2e;
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.card-progress small {
+    display: block;
+    color: black;
+    font-size: .9rem;
+    font-weight: 500;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #34495e;
+}
+
+.form-control,
+.form-control[readonly] {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.2s ease;
+    background-color: #f8f9fa;
+}
+
+.form-control:focus,
+.form-control[readonly]:focus {
+    border-color: #47b13c;
+    box-shadow: 0 0 5px rgba(71, 177, 60, 0.3);
+    outline: none;
+}
+
+textarea.form-control {
+    resize: none;
+}
+
+.btn-primary {
+    background-color: #47b13c;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-primary:hover {
+    background-color: #3a9b30;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    border-radius: 8px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+}
+
+.text-muted {
+    font-size: 0.875rem;
+}

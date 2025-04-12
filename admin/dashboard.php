@@ -29,7 +29,7 @@ $stmt->execute();
 $total_ready_to_pickup = $stmt->get_result()->fetch_assoc()['total'];
 
 // Fetch the 10 most recent requests (most recent first)
-$stmt = $conn->prepare("SELECT r.id, r.request_id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
+$stmt = $conn->prepare("SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
                                r.price, r.status, r.requested_date 
                         FROM requests r 
                         JOIN users u ON r.user_id = u.id 
@@ -171,7 +171,7 @@ while ($row = $result->fetch_assoc()) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p><strong>Request ID:</strong> <span id="modal-request-id"></span></p>
+                <p><strong>ID:</strong> <span id="modal-id"></span></p>
                 <p><strong>Document Type:</strong> <span id="modal-document-type"></span></p>
                 <p><strong>Student Name:</strong> <span id="modal-student-name"></span></p>
                 <p><strong>Price:</strong> <span id="modal-price"></span></p>
@@ -197,7 +197,7 @@ document.querySelectorAll('.view-btn').forEach(button => {
             .then(data => {
                 if (data.status === 'success') {
                     const request = data.data;
-                    document.getElementById('modal-request-id').textContent = request.request_id;
+                    document.getElementById('modal-id').textContent = request.id;
                     document.getElementById('modal-document-type').textContent = request.document_type;
                     document.getElementById('modal-student-name').textContent = request.student_name;
                     document.getElementById('modal-price').textContent = '₱' + parseFloat(request.price).toFixed(2);

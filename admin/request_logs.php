@@ -20,10 +20,10 @@ $types = "";
 
 // Search filter
 if ($search) {
-    $where_clauses[] = "(r.request_id LIKE ? OR r.document_type LIKE ? OR CONCAT(u.firstname, ' ', u.lastname) LIKE ?)";
+    $where_clauses[] = "(r.document_type LIKE ? OR CONCAT(u.firstname, ' ', u.lastname) LIKE ?)";
     $search_param = "%$search%";
-    $params = array_merge($params, [$search_param, $search_param, $search_param]);
-    $types .= "sss";
+    $params = array_merge($params, [$search_param, $search_param]);
+    $types .= "ss";
 }
 
 // Status filter
@@ -62,7 +62,7 @@ $page = max(1, min($page, $total_pages));
 $offset = ($page - 1) * $requests_per_page;
 
 // Fetch paginated requests
-$query = "SELECT r.id, r.request_id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
+$query = "SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
                  r.price, r.status, r.requested_date, r.archived, r.file_path, r.remarks, r.rejection_reason 
           FROM requests r 
           JOIN users u ON r.user_id = u.id 
@@ -83,7 +83,7 @@ while ($row = $result->fetch_assoc()) {
 }
 
 // Fetch archived requests for the modal
-$archived_query = "SELECT r.id, r.request_id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
+$archived_query = "SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
                           r.price, r.status, r.requested_date, r.file_path, r.remarks, r.rejection_reason 
                    FROM requests r 
                    JOIN users u ON r.user_id = u.id 
@@ -159,7 +159,7 @@ while ($row = $archived_result->fetch_assoc()) {
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th>
-                            <th>Request ID</th>
+                            <th>ID</th>
                             <th>Document Type</th>
                             <th>Student Name</th>
                             <th>Price</th>
@@ -175,9 +175,9 @@ while ($row = $archived_result->fetch_assoc()) {
                             <?php foreach ($paginated_requests as $request): ?>
                                 <tr>
                                     <td>
-                                        <input type="checkbox" name="selected_requests[]" value="<?php echo $request['id']; ?>" class="request-checkbox" data-request-id="<?php echo htmlspecialchars($request['request_id']); ?>">
+                                        <input type="checkbox" name="selected_requests[]" value="<?php echo $request['id']; ?>" class="request-checkbox">
                                     </td>
-                                    <td><?php echo htmlspecialchars($request['request_id']); ?></td>
+                                    <td><?php echo htmlspecialchars($request['id']); ?></td>
                                     <td><?php echo htmlspecialchars($request['document_type']); ?></td>
                                     <td><?php echo htmlspecialchars($request['student_name']); ?></td>
                                     <td>₱<?php echo number_format($request['price'], 2); ?></td>
@@ -197,8 +197,8 @@ while ($row = $archived_result->fetch_assoc()) {
                                     </td>
                                     <td>
                                         <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
-                                        <button type="button" class="btn btn-warning btn-sm archive-btn" data-id="<?php echo $request['id']; ?>" data-request-id="<?php echo htmlspecialchars($request['request_id']); ?>">Archive</button>
-                                        <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>" data-request-id="<?php echo htmlspecialchars($request['request_id']); ?>">Delete</button>
+                                        <button type="button" class="btn btn-warning btn-sm archive-btn" data-id="<?php echo $request['id']; ?>">Archive</button>
+                                        <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>">Delete</button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -242,7 +242,7 @@ while ($row = $archived_result->fetch_assoc()) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p><strong>Request ID:</strong> <span id="modal-request-id"></span></p>
+                <p><strong>ID:</strong> <span id="modal-id"></span></p>
                 <p><strong>Document Type:</strong> <span id="modal-document-type"></span></p>
                 <p><strong>Student Name:</strong> <span id="modal-student-name"></span></p>
                 <p><strong>Price:</strong> <span id="modal-price"></span></p>
@@ -271,7 +271,7 @@ while ($row = $archived_result->fetch_assoc()) {
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Request ID</th>
+                            <th>ID</th>
                             <th>Document Type</th>
                             <th>Student Name</th>
                             <th>Price</th>
@@ -283,7 +283,7 @@ while ($row = $archived_result->fetch_assoc()) {
                     <tbody>
                         <?php foreach ($archived_requests as $request): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($request['request_id']); ?></td>
+                                <td><?php echo htmlspecialchars($request['id']); ?></td>
                                 <td><?php echo htmlspecialchars($request['document_type']); ?></td>
                                 <td><?php echo htmlspecialchars($request['student_name']); ?></td>
                                 <td>₱<?php echo number_format($request['price'], 2); ?></td>
@@ -303,8 +303,8 @@ while ($row = $archived_result->fetch_assoc()) {
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
-                                    <button type="button" class="btn btn-success btn-sm retrieve-btn" data-id="<?php echo $request['id']; ?>" data-request-id="<?php echo htmlspecialchars($request['request_id']); ?>">Retrieve</button>
-                                    <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>" data-request-id="<?php echo htmlspecialchars($request['request_id']); ?>">Delete</button>
+                                    <button type="button" class="btn btn-success btn-sm retrieve-btn" data-id="<?php echo $request['id']; ?>">Retrieve</button>
+                                    <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>">Delete</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -354,19 +354,17 @@ function hideProcessingMessage() {
 // Bulk archive selected requests
 function bulkArchive() {
     const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
-        .map(checkbox => ({ id: checkbox.value, requestId: checkbox.dataset.requestId }));
+        .map(checkbox => checkbox.value);
     if (selected.length === 0) {
         alert('Please select at least one request to archive.');
         return;
     }
-    const requestIds = selected.map(item => item.requestId).join(', ');
-    if (confirm(`Archive ${selected.length} selected request(s) (${requestIds})?`)) {
-        const ids = selected.map(item => item.id);
+    if (confirm(`Archive ${selected.length} selected request(s)?`)) {
         showProcessingMessage('Archiving requests... Please wait.');
         fetch('request_actions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=bulk_archive&ids=${ids.join(',')}`
+            body: `action=bulk_archive&ids=${selected.join(',')}`
         })
         .then(response => response.json())
         .then(data => {
@@ -387,19 +385,17 @@ function bulkArchive() {
 // Bulk delete selected requests
 function bulkDelete() {
     const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
-        .map(checkbox => ({ id: checkbox.value, requestId: checkbox.dataset.requestId }));
+        .map(checkbox => checkbox.value);
     if (selected.length === 0) {
         alert('Please select at least one request to delete.');
         return;
     }
-    const requestIds = selected.map(item => item.requestId).join(', ');
-    if (confirm(`Delete ${selected.length} selected request(s) (${requestIds})? This action cannot be undone.`)) {
-        const ids = selected.map(item => item.id);
+    if (confirm(`Delete ${selected.length} selected request(s)? This action cannot be undone.`)) {
         showProcessingMessage('Deleting requests... Please wait.');
         fetch('request_actions.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=bulk_delete&ids=${ids.join(',')}`
+            body: `action=bulk_delete&ids=${selected.join(',')}`
         })
         .then(response => response.json())
         .then(data => {
@@ -421,8 +417,7 @@ function bulkDelete() {
 document.querySelectorAll('.archive-btn').forEach(button => {
     button.addEventListener('click', function() {
         const requestId = this.dataset.id;
-        const requestIdDisplay = this.dataset.requestId;
-        if (confirm(`Archive request ID: ${requestIdDisplay}?`)) {
+        if (confirm(`Archive request ID: ${requestId}?`)) {
             showProcessingMessage('Archiving request... Please wait.');
             fetch('request_actions.php', {
                 method: 'POST',
@@ -450,8 +445,7 @@ document.querySelectorAll('.archive-btn').forEach(button => {
 document.querySelectorAll('.delete-btn').forEach(button => {
     button.addEventListener('click', function() {
         const requestId = this.dataset.id;
-        const requestIdDisplay = this.dataset.requestId;
-        if (confirm(`Delete request ID: ${requestIdDisplay}? This action cannot be undone.`)) {
+        if (confirm(`Delete request ID: ${requestId}? This action cannot be undone.`)) {
             showProcessingMessage('Deleting request... Please wait.');
             fetch('request_actions.php', {
                 method: 'POST',
@@ -479,8 +473,7 @@ document.querySelectorAll('.delete-btn').forEach(button => {
 document.querySelectorAll('.retrieve-btn').forEach(button => {
     button.addEventListener('click', function() {
         const requestId = this.dataset.id;
-        const requestIdDisplay = this.dataset.requestId;
-        if (confirm(`Retrieve request ID: ${requestIdDisplay}?`)) {
+        if (confirm(`Retrieve request ID: ${requestId}?`)) {
             showProcessingMessage('Retrieving request... Please wait.');
             fetch('request_actions.php', {
                 method: 'POST',
@@ -513,7 +506,7 @@ document.querySelectorAll('.view-btn').forEach(button => {
             .then(data => {
                 if (data.status === 'success') {
                     const request = data.data;
-                    document.getElementById('modal-request-id').textContent = request.request_id;
+                    document.getElementById('modal-id').textContent = request.id;
                     document.getElementById('modal-document-type').textContent = request.document_type;
                     document.getElementById('modal-student-name').textContent = request.student_name;
                     document.getElementById('modal-price').textContent = '₱' + parseFloat(request.price).toFixed(2);

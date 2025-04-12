@@ -19,10 +19,10 @@ $types = "";
 
 // Search filter
 if ($search) {
-    $where_clauses[] = "(r.request_id LIKE ? OR r.document_type LIKE ? OR CONCAT(u.firstname, ' ', u.lastname) LIKE ?)";
+    $where_clauses[] = "(r.document_type LIKE ? OR CONCAT(u.firstname, ' ', u.lastname) LIKE ?)";
     $search_param = "%$search%";
-    $params = array_merge($params, [$search_param, $search_param, $search_param]);
-    $types .= "sss";
+    $params = array_merge($params, [$search_param, $search_param]);
+    $types .= "ss";
 }
 
 // Status filter
@@ -54,7 +54,7 @@ $page = max(1, min($page, $total_pages));
 $offset = ($page - 1) * $requests_per_page;
 
 // Fetch paginated requests
-$query = "SELECT r.id, r.request_id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
+$query = "SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
                  r.price, r.status, r.requested_date, r.file_path, r.remarks 
           FROM requests r 
           JOIN users u ON r.user_id = u.id 
@@ -140,7 +140,7 @@ while ($row = $result->fetch_assoc()) {
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th>
-                            <th>Request ID</th>
+                            <th>ID</th>
                             <th>Document Type</th>
                             <th>Student Name</th>
                             <th>Price</th>
@@ -158,7 +158,7 @@ while ($row = $result->fetch_assoc()) {
                                     <td>
                                         <input type="checkbox" name="selected_requests[]" value="<?php echo $request['id']; ?>" class="request-checkbox" data-status="<?php echo htmlspecialchars($request['status']); ?>">
                                     </td>
-                                    <td><?php echo htmlspecialchars($request['request_id']); ?></td>
+                                    <td><?php echo htmlspecialchars($request['id']); ?></td>
                                     <td><?php echo htmlspecialchars($request['document_type']); ?></td>
                                     <td><?php echo htmlspecialchars($request['student_name']); ?></td>
                                     <td>₱<?php echo number_format($request['price'], 2); ?></td>
@@ -177,12 +177,12 @@ while ($row = $result->fetch_assoc()) {
                                     <td>
                                         <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
                                         <?php if ($request['status'] === 'Pending'): ?>
-                                            <button type="button" class="btn btn-success btn-sm" onclick="approveRequest(<?php echo $request['id']; ?>, '<?php echo htmlspecialchars($request['request_id']); ?>')">Approve</button>
-                                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal" data-id="<?php echo $request['id']; ?>" data-request-id="<?php echo htmlspecialchars($request['request_id']); ?>">Reject</button>
+                                            <button type="button" class="btn btn-success btn-sm" onclick="approveRequest(<?php echo $request['id']; ?>)">Approve</button>
+                                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal" data-id="<?php echo $request['id']; ?>">Reject</button>
                                         <?php elseif ($request['status'] === 'In Process'): ?>
-                                            <button type="button" class="btn btn-success btn-sm" onclick="markReady(<?php echo $request['id']; ?>, '<?php echo htmlspecialchars($request['request_id']); ?>')">Mark Ready</button>
+                                            <button type="button" class="btn btn-success btn-sm" onclick="markReady(<?php echo $request['id']; ?>)">Mark Ready</button>
                                         <?php elseif ($request['status'] === 'Ready to Pickup'): ?>
-                                            <button type="button" class="btn btn-primary btn-sm" onclick="markCompleted(<?php echo $request['id']; ?>, '<?php echo htmlspecialchars($request['request_id']); ?>')">Mark Completed</button>
+                                            <button type="button" class="btn btn-primary btn-sm" onclick="markCompleted(<?php echo $request['id']; ?>)">Mark Completed</button>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -227,7 +227,7 @@ while ($row = $result->fetch_assoc()) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p><strong>Request ID:</strong> <span id="modal-request-id"></span></p>
+                <p><strong>ID:</strong> <span id="modal-id"></span></p>
                 <p><strong>Document Type:</strong> <span id="modal-document-type"></span></p>
                 <p><strong>Student Name:</strong> <span id="modal-student-name"></span></p>
                 <p><strong>Price:</strong> <span id="modal-price"></span></p>
@@ -423,8 +423,8 @@ function submitBulkRejection() {
 }
 
 // Individual approve
-function approveRequest(id, requestId) {
-    if (confirm(`Approve request ID: ${requestId}?`)) {
+function approveRequest(id) {
+    if (confirm(`Approve request ID: ${id}?`)) {
         fetch('request_management.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -443,8 +443,8 @@ function approveRequest(id, requestId) {
 }
 
 // Individual mark ready
-function markReady(id, requestId) {
-    if (confirm(`Mark request ID: ${requestId} as Ready to Pickup?`)) {
+function markReady(id) {
+    if (confirm(`Mark request ID: ${id} as Ready to Pickup?`)) {
         fetch('request_management.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -463,8 +463,8 @@ function markReady(id, requestId) {
 }
 
 // Individual mark completed
-function markCompleted(id, requestId) {
-    if (confirm(`Mark request ID: ${requestId} as Completed?`)) {
+function markCompleted(id) {
+    if (confirm(`Mark request ID: ${id} as Completed?`)) {
         fetch('request_management.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -486,7 +486,7 @@ function markCompleted(id, requestId) {
 document.querySelectorAll('[data-bs-target="#rejectModal"]').forEach(button => {
     button.addEventListener('click', function () {
         document.getElementById('reject-request-id').value = this.dataset.id;
-        document.getElementById('rejectModalLabel').textContent = `Reject Request ID: ${this.dataset.requestId}`;
+        document.getElementById('rejectModalLabel').textContent = `Reject Request ID: ${this.dataset.id}`;
     });
 });
 
@@ -498,7 +498,7 @@ function submitRejection() {
         alert('Please provide a reason for rejection.');
         return;
     }
-    if (confirm(`Reject request ID: ${document.getElementById('rejectModalLabel').textContent.split(': ')[1]}?`)) {
+    if (confirm(`Reject request ID: ${id}?`)) {
         fetch('request_management.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -525,7 +525,7 @@ document.querySelectorAll('.view-btn').forEach(button => {
             .then(data => {
                 if (data.status === 'success') {
                     const request = data.data;
-                    document.getElementById('modal-request-id').textContent = request.request_id;
+                    document.getElementById('modal-id').textContent = request.id;
                     document.getElementById('modal-document-type').textContent = request.document_type;
                     document.getElementById('modal-student-name').textContent = request.student_name;
                     document.getElementById('modal-price').textContent = '₱' + parseFloat(request.price).toFixed(2);
