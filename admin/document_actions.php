@@ -70,21 +70,25 @@ switch ($action) {
         // Delete document
         $id = validate($_POST['id']);
 
-        // Check if the document is used (e.g., in a requests table)
-        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM requests WHERE document_id = ?");
+        // Fetch document name for logging and checking
+        $stmt = $conn->prepare("SELECT name FROM documents WHERE id = ?");
         $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result->num_rows === 0) {
+            redirect('documents.php?page=' . (isset($_GET['page']) ? $_GET['page'] : 1), 'Document not found.', 'danger');
+        }
+        $doc = $result->fetch_assoc();
+        $name = $doc['name'];
+
+        // Check if the document is used in requests (using document_type matching name)
+        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM requests WHERE document_type = ?");
+        $stmt->bind_param("s", $name);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         if ($result['count'] > 0) {
             redirect('documents.php?page=' . (isset($_GET['page']) ? $_GET['page'] : 1), 'Cannot delete document: It is currently in use.', 'danger');
         }
-
-        // Fetch document name for logging
-        $stmt = $conn->prepare("SELECT name FROM documents WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $doc = $stmt->get_result()->fetch_assoc();
-        $name = $doc['name'];
 
         // Delete document
         $stmt = $conn->prepare("DELETE FROM documents WHERE id = ?");

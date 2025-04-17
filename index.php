@@ -2,64 +2,9 @@
 $page_title = "Login Form";
 include('includes/header.php');
 
-redirectIfLoggedIn(); // Redirect if logged in
-
-// Check for "Remember Me" token and auto-login
-if (!isset($_SESSION['auth']) && isset($_COOKIE['remember_token'])) {
-    $remember_token = validate($_COOKIE['remember_token']);
-    $stmt = $conn->prepare("SELECT * FROM users WHERE remember_token = ? LIMIT 1");
-    $stmt->bind_param("s", $remember_token);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result && mysqli_num_rows($result) == 1) {
-        $row = mysqli_fetch_assoc($result);
-
-        // Check if token has expired
-        $expires_at = new DateTime($row['remember_expires_at']);
-        $now = new DateTime();
-        if ($now > $expires_at) {
-            $stmt = $conn->prepare("UPDATE users SET remember_token = NULL, remember_expires_at = NULL WHERE email = ?");
-            $stmt->bind_param("s", $row['email']);
-            $stmt->execute();
-            setcookie('remember_token', '', time() - 3600, '/', '', false, true);
-        } else {
-            session_regenerate_id(true);
-            $_SESSION['auth'] = true;
-            $_SESSION['user_id'] = $row['id']; // Added: Set user_id
-            $_SESSION['role'] = $row['role'];
-            $_SESSION['loggedInUser'] = [
-                'firstname' => $row['firstname'],
-                'lastname' => $row['lastname'],
-                'email' => $row['email']
-            ];
-
-            // Debug: Confirm session after Remember Me
-            echo "<pre>After Remember Me - Session Auth: " . var_export($_SESSION['auth'], true) . "\n";
-            echo "User ID: " . $_SESSION['user_id'] . "\n"; // Debug
-            echo "Role: " . $_SESSION['role'] . "</pre>";
-
-            switch ($row['role']) {
-                case 'admin':
-                    redirect('admin/dashboard.php', 'Welcome Admin', 'success');
-                    break;
-                case 'staff':
-                    redirect('staff/dashboard.php', 'Welcome Staff', 'success');
-                    break;
-                case 'cashier':
-                    redirect('cashier/dashboard.php', 'Welcome Cashier', 'success');
-                    break;
-                case 'student':
-                case 'alumni':
-                    redirect('users/dashboard.php', 'Welcome to the Student Dashboard', 'success');
-                    break;
-                default:
-                    redirect('index.php', 'Invalid Role', 'danger');
-                    exit();
-            }
-        }
-    }
-    $conn->close();
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
 // Generate CSRF token if not already set
@@ -70,17 +15,9 @@ if (empty($_SESSION['csrf_token'])) {
 // Check for "Remember Me" cookie to pre-fill email
 $remembered_email = '';
 $remembered_checked = '';
-if (isset($_COOKIE['remember_token'])) {
-    $stmt = $conn->prepare("SELECT email FROM users WHERE remember_token = ? LIMIT 1");
-    $stmt->bind_param("s", $_COOKIE['remember_token']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result && mysqli_num_rows($result) == 1) {
-        $row = $result->fetch_assoc();
-        $remembered_email = htmlspecialchars($row['email'], ENT_QUOTES, 'UTF-8');
-        $remembered_checked = 'checked';
-    }
-    $conn->close();
+if (isset($_COOKIE['remember_email'])) {
+    $remembered_email = htmlspecialchars($_COOKIE['remember_email'], ENT_QUOTES, 'UTF-8');
+    $remembered_checked = 'checked';
 }
 ?>
 

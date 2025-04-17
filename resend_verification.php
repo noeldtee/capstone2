@@ -2,7 +2,6 @@
 $page_title = "Resend Verification Email";
 include('includes/header.php');
 
-redirectIfLoggedIn(); // Redirect if already logged in
 // Generate CSRF token if not already set
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));

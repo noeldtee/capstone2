@@ -2,7 +2,6 @@
 $page_title = "Reset Password";
 include('includes/header.php');
 
-redirectIfLoggedIn(); // Redirect if already logged in
 // Check if token is provided
 if (!isset($_GET['token']) || empty($_GET['token'])) {
     redirect('password-reset.php', 'Invalid reset link.', 'danger');

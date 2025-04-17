@@ -1,8 +1,9 @@
 <?php
 require 'config/function.php';
 
-// Start session if not already started
+// Start session with cookie lifetime set to 0 (expires when browser closes)
 if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params(0); // Session cookie expires when browser closes
     session_start();
 }
 
@@ -76,7 +77,7 @@ if (isset($_POST['loginBtn'])) {
 
             // Set session variables
             $_SESSION['auth'] = true;
-            $_SESSION['user_id'] = $row['id']; // Added: Set user_id
+            $_SESSION['user_id'] = $row['id'];
             $_SESSION['role'] = $row['role'];
             $_SESSION['loggedInUser'] = [
                 'firstname' => $row['firstname'],
@@ -84,28 +85,19 @@ if (isset($_POST['loginBtn'])) {
                 'email' => $row['email']
             ];
 
-            // Handle "Remember Me" functionality
+            // Handle "Remember Me" functionality (store email only)
             if (isset($_POST['remember_me'])) {
-                $remember_token = bin2hex(random_bytes(16));
-                $expires_at = date('Y-m-d H:i:s', strtotime('+30 days'));
-
-                $stmt = $conn->prepare("UPDATE users SET remember_token = ?, remember_expires_at = ? WHERE email = ?");
-                $stmt->bind_param("sss", $remember_token, $expires_at, $email);
-                $stmt->execute();
-
-                setcookie('remember_token', $remember_token, time() + (30 * 24 * 60 * 60), '/', '', false, true);
+                // Store email in cookie for 30 days
+                setcookie('remember_email', $email, time() + (30 * 24 * 60 * 60), '/', '', false, true);
             } else {
-                $stmt = $conn->prepare("UPDATE users SET remember_token = NULL, remember_expires_at = NULL WHERE email = ?");
-                $stmt->bind_param("s", $email);
-                $stmt->execute();
-                setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+                // Clear remember_email cookie if unchecked
                 setcookie('remember_email', '', time() - 3600, '/', '', false, true);
             }
 
             // Reset login attempts on successful login
             $_SESSION['login_attempts'] = 0;
 
-            // Redirect based on role (updated paths)
+            // Redirect based on role
             switch ($row['role']) {
                 case 'admin':
                     redirect('admin/dashboard.php', 'Welcome Admin', 'success');

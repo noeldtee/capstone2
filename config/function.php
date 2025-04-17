@@ -22,14 +22,6 @@ function logoutSession()
         session_start();
     }
 
-    // Clear remember token if set
-    if (isset($_COOKIE['remember_token'])) {
-        $stmt = $conn->prepare("UPDATE users SET remember_token = NULL, remember_expires_at = NULL WHERE remember_token = ?");
-        $stmt->bind_param("s", $_COOKIE['remember_token']);
-        $stmt->execute();
-        setcookie('remember_token', '', time() - 3600, '/', '', false, true);
-    }
-
     // Clear remember_email cookie if it exists
     if (isset($_COOKIE['remember_email'])) {
         setcookie('remember_email', '', time() - 3600, '/', '', false, true);
@@ -46,6 +38,7 @@ function logoutSession()
 // Redirection
 function redirect($url, $message, $type = 'success')
 {
+    error_log("Redirecting to: $url with message: $message ($type)");
     $_SESSION['message'] = $message;
     $_SESSION['message_type'] = $type;
     header("Location: $url");
@@ -139,30 +132,6 @@ function closeConnection()
     }
 }
 
-function redirectIfLoggedIn()
-{
-    if (isset($_SESSION['auth']) && $_SESSION['auth'] === true) {
-        switch ($_SESSION['role']) {
-            case 'admin':
-                redirect('admin/dashboard.php', 'You are already logged in as Admin', 'info');
-                break;
-            case 'staff':
-                redirect('staff/dashboard.php', 'You are already logged in as Staff', 'info');
-                break;
-            case 'cashier':
-                redirect('cashier/dashboard.php', 'You are already logged in as Cashier', 'info');
-                break;
-            case 'student':
-            case 'alumni':
-                redirect('users/dashboard.php', 'You are already logged in', 'info'); // Updated to users/dashboard.php
-                break;
-            default:
-                redirect('index.php', 'Invalid Role', 'danger');
-                break;
-        }
-    }
-}
-
 function logAction($conn, $action_type, $target, $details, $ip_address = null)
 {
     // Ensure the user ID is set (e.g., from session)
@@ -210,4 +179,3 @@ function logAction($conn, $action_type, $target, $details, $ip_address = null)
 
     return $success; // Return true on success, false on failure
 }
-

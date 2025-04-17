@@ -10,54 +10,49 @@ $offset = ($page - 1) * $limit;
 // Fetch total number of documents
 $query = "SELECT COUNT(*) as total FROM documents";
 $result = mysqli_query($conn, $query);
-$total_documents = mysqli_fetch_assoc($result)['total'];
-$total_pages = $total_documents > 0 ? ceil($total_documents / $limit) : 1;
-$page = max(1, min($page, $total_pages));
-$offset = ($page - 1) * $limit;
-
-// Fetch documents with pagination
-$query = "SELECT * FROM documents LIMIT $offset, $limit";
-$result = mysqli_query($conn, $query);
-
 if (!$result) {
-    $_SESSION['error'] = "Failed to fetch documents: " . mysqli_error($conn);
-    header("Location: error.php");
-    exit();
-}
+    $_SESSION['message'] = "Failed to fetch document count: " . mysqli_error($conn);
+    $_SESSION['message_type'] = "danger";
+} else {
+    $total_documents = mysqli_fetch_assoc($result)['total'];
+    $total_pages = $total_documents > 0 ? ceil($total_documents / $limit) : 1;
+    $page = max(1, min($page, $total_pages));
+    $offset = ($page - 1) * $limit;
 
-$documents = [];
-while ($row = mysqli_fetch_assoc($result)) {
-    $documents[] = $row;
+    // Fetch documents with pagination
+    $query = "SELECT * FROM documents LIMIT $offset, $limit";
+    $result = mysqli_query($conn, $query);
+    if (!$result) {
+        $_SESSION['message'] = "Failed to fetch documents: " . mysqli_error($conn);
+        $_SESSION['message_type'] = "danger";
+    } else {
+        $documents = [];
+        while ($row = mysqli_fetch_assoc($result)) {
+            $documents[] = $row;
+        }
+    }
 }
 ?>
 
 <link rel="stylesheet" href="../assets/css/admin_dashboard.css">
+<?php if (isset($_SESSION['message'])): ?>
+    <div class="alert alert-<?php echo $_SESSION['message_type']; ?> alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x" style="z-index: 1050; margin-top: 20px;" role="alert">
+        <?php echo htmlspecialchars($_SESSION['message']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
+<?php endif; ?>
 <main>
     <div class="page-header">
         <span>Document Management</span><br>
         <small>Create, edit, or delete documents available for request.</small>
     </div>
     <div class="page-content">
-        <?php if (isset($_SESSION['message'])): ?>
-            <div class="alert alert-<?php echo $_SESSION['message_type']; ?> alert-dismissible fade show" role="alert">
-                <?php echo htmlspecialchars($_SESSION['message']); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
-        <?php endif; ?>
-        <?php if (isset($_SESSION['error'])): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <?php echo htmlspecialchars($_SESSION['error']); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <?php unset($_SESSION['error']); ?>
-        <?php endif; ?>
-
         <!-- Records Table -->
         <div class="records table-responsive">
             <div class="record-header">
                 <div class="add">
-                    <span>All Documents (<?php echo $total_documents; ?> found)</span>
+                    <span>All Documents (<?php echo isset($total_documents) ? $total_documents : 0; ?> found)</span>
                     <button type="button" class="btn btn-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#addModal">Add Document</button>
                 </div>
             </div>
@@ -96,7 +91,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                     </tbody>
                 </table>
             </div>
-            <?php if ($total_pages > 1): ?>
+            <?php if (isset($total_pages) && $total_pages > 1): ?>
                 <nav aria-label="Page navigation">
                     <ul class="pagination justify-content-center mt-3">
                         <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">

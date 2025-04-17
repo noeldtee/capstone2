@@ -23,8 +23,8 @@ switch ($action) {
         $lastname = validate($_POST['lastname']);
         $email = validate($_POST['email']);
         $number = validate($_POST['number']);
+        $profile = '../assets/images/default_profile.png'; // Hardcoded default
         $password = validate($_POST['password']);
-        $profile = validate($_POST['profile']) ?: '../assets/images/default_profile.png';
         $role = validate($_POST['role']);
         $is_ban = (int)validate($_POST['is_ban']);
 
@@ -87,7 +87,7 @@ switch ($action) {
         $lastname = validate($_POST['lastname']);
         $email = validate($_POST['email']);
         $number = validate($_POST['number']);
-        $profile = validate($_POST['profile']) ?: '../assets/images/default_profile.png';
+        $profile = '../assets/images/default_profile.png'; // Hardcoded default
         $password = isset($_POST['password']) ? trim($_POST['password']) : '';
         $role = validate($_POST['role']);
         $is_ban = (int)validate($_POST['is_ban']);
@@ -167,7 +167,8 @@ switch ($action) {
         error_reporting(E_ALL);
 
         if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-            $response = ['status' => 400, 'message' => 'Invalid admin ID.'];
+            $response = [' reflective journal
+status' => 400, 'message' => 'Invalid admin ID.'];
             header('Content-Type: application/json');
             echo json_encode($response);
             exit;

@@ -2,12 +2,6 @@
 $page_title = "Academic Management";
 include('includes/header.php');
 
-// Restrict to authenticated admins (registrar)
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin'])) {
-    redirect('../index.php', 'Please log in as an admin to access this page.', 'warning');
-    exit();
-}
-
 // Search and filter parameters
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $school_year_filter = isset($_GET['school_year']) ? trim($_GET['school_year']) : '';
@@ -40,25 +34,29 @@ if ($status_filter !== '' && in_array($status_filter, ['0', '1'])) {
 $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
 
 // Fetch school years
-$query = "SELECT * FROM school_years";
-$result = mysqli_query($conn, $query);
+$stmt = $conn->prepare("SELECT * FROM school_years");
+$stmt->execute();
+$result = $stmt->get_result();
 $school_years = [];
-while ($row = mysqli_fetch_assoc($result)) {
+while ($row = $result->fetch_assoc()) {
     $school_years[$row['id']] = $row;
 }
+$stmt->close();
 
-// Fetch courses (without department)
-$query = "SELECT * FROM courses";
-$result = mysqli_query($conn, $query);
+// Fetch courses
+$stmt = $conn->prepare("SELECT * FROM courses");
+$stmt->execute();
+$result = $stmt->get_result();
 $courses = [];
-while ($row = mysqli_fetch_assoc($result)) {
+while ($row = $result->fetch_assoc()) {
     $courses[$row['id']] = $row;
 }
+$stmt->close();
 
-// Year levels (static, as defined in the database)
+// Year levels
 $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 
-// Fetch sections with joined school years and courses
+// Fetch sections
 $query = "SELECT s.*, sy.year AS school_year, c.name AS course_name 
           FROM sections s 
           JOIN school_years sy ON s.school_year_id = sy.id 
@@ -66,7 +64,8 @@ $query = "SELECT s.*, sy.year AS school_year, c.name AS course_name
           $where_sql";
 $stmt = $conn->prepare($query);
 if (!$stmt) {
-    $_SESSION['error'] = "Failed to prepare query for sections: " . $conn->error;
+    $_SESSION['message'] = "Failed to prepare query for sections: " . $conn->error;
+    $_SESSION['message_type'] = 'danger';
     $sections = [];
 } else {
     if (!empty($params)) {
@@ -89,23 +88,22 @@ if (!$stmt) {
         <small>Manage sections, courses, and school years for student organization.</small>
     </div>
     <div class="page-content">
-        <!-- Display Success/Error Messages -->
-        <?php alertMessage(); ?>
-        <?php if (isset($_SESSION['error'])): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <?php echo htmlspecialchars($_SESSION['error']); ?>
+        <!-- Display Messages -->
+        <?php if (isset($_SESSION['message'])): ?>
+            <div class="alert alert-<?php echo htmlspecialchars($_SESSION['message_type']); ?> alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x" style="z-index: 1050; margin-top: 20px;" role="alert">
+                <?php echo htmlspecialchars($_SESSION['message']); ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
-            <?php unset($_SESSION['error']); ?>
+            <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
         <?php endif; ?>
 
-        <!-- Management Options (Courses and School Years only) -->
+        <!-- Management Options -->
         <div class="mb-3">
             <button type="button" class="btn btn-info btn-sm me-2" data-bs-toggle="modal" data-bs-target="#viewCoursesModal">View Courses</button>
             <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#viewSchoolYearsModal">View School Years</button>
         </div>
 
-        <!-- Filter Form (Search + Filters) -->
+        <!-- Filter Form -->
         <div class="mb-3">
             <form method="GET" action="sections.php" class="row g-3">
                 <div class="col-md-3">
@@ -302,7 +300,7 @@ if (!$stmt) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addSectionForm" method="POST" action="section_actions.php">
+                <form id="addSectionForm" method="POST" action="/capstone-admin/admin/section_actions.php">
                     <input type="hidden" name="action" value="add">
                     <div class="mb-3">
                         <label for="addSectionSchoolYear" class="form-label">School Year</label>
@@ -361,7 +359,7 @@ if (!$stmt) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="editSectionForm" method="POST" action="section_actions.php">
+                <form id="editSectionForm" method="POST" action="/capstone-admin/admin/section_actions.php">
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" id="editSectionId" name="id">
                     <div class="mb-3">
@@ -422,7 +420,7 @@ if (!$stmt) {
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete this section? This action cannot be undone.</p>
-                <form id="deleteSectionForm" method="POST" action="section_actions.php">
+                <form id="deleteSectionForm" method="POST" action="/capstone-admin/admin/section_actions.php">
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" id="deleteSectionId" name="id">
                 </form>
@@ -444,7 +442,7 @@ if (!$stmt) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addCourseForm" method="POST" action="course_actions.php">
+                <form id="addCourseForm" method="POST" action="/capstone-admin/admin/course_actions.php">
                     <input type="hidden" name="action" value="add">
                     <div class="mb-3">
                         <label for="addCourseName" class="form-label">Course Name</label>
@@ -484,7 +482,7 @@ if (!$stmt) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="editCourseForm" method="POST" action="course_actions.php">
+                <form id="editCourseForm" method="POST" action="/capstone-admin/admin/course_actions.php">
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" id="editCourseId" name="id">
                     <div class="mb-3">
@@ -526,7 +524,7 @@ if (!$stmt) {
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete this course? This action cannot be undone.</p>
-                <form id="deleteCourseForm" method="POST" action="course_actions.php">
+                <form id="deleteCourseForm" method="POST" action="/capstone-admin/admin/course_actions.php">
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" id="deleteCourseId" name="id">
                 </form>
@@ -548,7 +546,7 @@ if (!$stmt) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addSchoolYearForm" method="POST" action="school_year_actions.php">
+                <form id="addSchoolYearForm" method="POST" action="/capstone-admin/admin/school_year_actions.php">
                     <input type="hidden" name="action" value="add">
                     <div class="mb-3">
                         <label for="addSchoolYearYear" class="form-label">School Year</label>
@@ -580,7 +578,7 @@ if (!$stmt) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="editSchoolYearForm" method="POST" action="school_year_actions.php">
+                <form id="editSchoolYearForm" method="POST" action="/capstone-admin/admin/school_year_actions.php">
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" id="editSchoolYearId" name="id">
                     <div class="mb-3">
@@ -614,7 +612,7 @@ if (!$stmt) {
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete this school year? This action cannot be undone.</p>
-                <form id="deleteSchoolYearForm" method="POST" action="school_year_actions.php">
+                <form id="deleteSchoolYearForm" method="POST" action="/capstone-admin/admin/school_year_actions.php">
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" id="deleteSchoolYearId" name="id">
                 </form>
@@ -628,7 +626,7 @@ if (!$stmt) {
 </div>
 
 <script>
-// Search functionality for sections table (client-side search)
+// Search functionality
 document.querySelector('input[name="search"]').addEventListener('input', function () {
     const search = this.value.toLowerCase();
     document.querySelectorAll('.records tbody tr').forEach(row => {
@@ -641,7 +639,7 @@ document.querySelector('input[name="search"]').addEventListener('input', functio
 document.querySelectorAll('.edit-section-btn').forEach(button => {
     button.addEventListener('click', function () {
         const id = this.dataset.id;
-        fetch('section_actions.php?action=get&id=' + id)
+        fetch('/capstone-admin/admin/section_actions.php?action=get&id=' + id)
             .then(response => response.json())
             .then(data => {
                 if (data.status === 200) {
@@ -674,7 +672,7 @@ document.querySelectorAll('.delete-section-btn').forEach(button => {
 document.querySelectorAll('.edit-course-btn').forEach(button => {
     button.addEventListener('click', function () {
         const id = this.dataset.id;
-        fetch('course_actions.php?action=get&id=' + id)
+        fetch('/capstone-admin/admin/course_actions.php?action=get&id=' + id)
             .then(response => response.json())
             .then(data => {
                 if (data.status === 200) {
@@ -706,7 +704,7 @@ document.querySelectorAll('.delete-course-btn').forEach(button => {
 document.querySelectorAll('.edit-school-year-btn').forEach(button => {
     button.addEventListener('click', function () {
         const id = this.dataset.id;
-        fetch('school_year_actions.php?action=get&id=' + id)
+        fetch('/capstone-admin/admin/school_year_actions.php?action=get&id=' + id)
             .then(response => response.json())
             .then(data => {
                 if (data.status === 200) {

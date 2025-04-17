@@ -2,7 +2,7 @@
 $page_title = "Users Management";
 include('includes/header.php');
 
-// Pagination, search, filter, and sort settings remain unchanged
+// Pagination, search, filter, and sort settings
 $limit = 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
@@ -39,7 +39,7 @@ if ($status_filter !== '' && in_array($status_filter, ['0', '1'])) {
 
 $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
 
-// Fetch school years, courses, sections remain unchanged
+// Fetch school years, courses, sections
 $stmt = $conn->prepare("SELECT * FROM school_years");
 $stmt->execute();
 $result = $stmt->get_result();
@@ -58,7 +58,16 @@ while ($row = $result->fetch_assoc()) {
 }
 $stmt->close();
 
-// Fetch total number of users remains unchanged
+$stmt = $conn->prepare("SELECT * FROM courses");
+$stmt->execute();
+$result = $stmt->get_result();
+$courses = [];
+while ($row = $result->fetch_assoc()) {
+    $courses[$row['id']] = $row;
+}
+$stmt->close();
+
+// Fetch total number of users
 $query = "SELECT COUNT(*) as total FROM users u LEFT JOIN sections s ON u.section_id = s.id LEFT JOIN courses c ON u.course_id = c.id LEFT JOIN school_years sy ON u.year_id = sy.id $where_sql";
 $stmt = $conn->prepare($query);
 if (!empty($params)) {
@@ -72,7 +81,7 @@ $total_pages = $total_users > 0 ? ceil($total_users / $limit) : 1;
 $page = max(1, min($page, $total_pages));
 $offset = ($page - 1) * $limit;
 
-// Fetch users query updated to include profile
+// Fetch users
 $query = "SELECT u.*, CONCAT(u.firstname, ' ', u.lastname) AS full_name, s.section AS section_name, c.name AS course_name, sy.year AS school_year 
           FROM users u LEFT JOIN sections s ON u.section_id = s.id LEFT JOIN courses c ON u.course_id = c.id LEFT JOIN school_years sy ON u.year_id = sy.id 
           $where_sql ORDER BY $sort_by $sort_order LIMIT ? OFFSET ?";
@@ -100,22 +109,24 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
         <small>Add, edit, or delete student and alumni records.</small>
     </div>
     <div class="page-content">
+        <!-- Display Messages -->
+        <?php
+        // Convert $_SESSION['error'] to $_SESSION['message'] for consistency
+        if (isset($_SESSION['error'])) {
+            $_SESSION['message'] = $_SESSION['error'];
+            $_SESSION['message_type'] = 'danger';
+            unset($_SESSION['error']);
+        }
+        ?>
         <?php if (isset($_SESSION['message'])): ?>
-            <div class="alert alert-<?php echo $_SESSION['message_type']; ?> alert-dismissible fade show" role="alert">
+            <div class="alert alert-<?php echo htmlspecialchars($_SESSION['message_type']); ?> alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x" style="z-index: 1050; margin-top: 20px;" role="alert">
                 <?php echo htmlspecialchars($_SESSION['message']); ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
         <?php endif; ?>
-        <?php if (isset($_SESSION['error'])): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <?php echo htmlspecialchars($_SESSION['error']); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <?php unset($_SESSION['error']); ?>
-        <?php endif; ?>
 
-        <!-- Filter Form remains unchanged -->
+        <!-- Filter Form -->
         <div class="mb-3">
             <form method="GET" action="students.php" class="row g-3">
                 <div class="col-md-3">
@@ -142,7 +153,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
             </form>
         </div>
 
-        <!-- Records Table (removed phone number, added profile column) -->
+        <!-- Records Table -->
         <div class="records table-responsive">
             <div class="record-header">
                 <div class="add">
@@ -208,7 +219,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
     </div>
 </main>
 
-<!-- Add User Modal (removed phone number, added hidden profile) -->
+<!-- Add User Modal -->
 <div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -217,9 +228,8 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addUserForm" method="POST" action="student_actions.php">
+                <form id="addUserForm" method="POST" action="/capstone-admin/admin/student_actions.php">
                     <input type="hidden" name="action" value="add">
-                    <input type="hidden" name="profile" value="../assets/images/default_profile.png">
                     <div class="mb-3">
                         <label for="addStudentId" class="form-label">Student/Alumni ID</label>
                         <input type="text" class="form-control" id="addStudentId" name="studentid" required placeholder="e.g., STU001">
@@ -241,24 +251,6 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                         <input type="password" class="form-control" id="addPassword" name="password" value="@Student01" required>
                     </div>
                     <div class="mb-3">
-                        <label for="addCourse" class="form-label">Course</label>
-                        <select class="form-select" id="addCourse" name="course_id" required>
-                            <option value="">Select Course</option>
-                            <?php foreach ($courses as $id => $course): ?>
-                                <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($course['name']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="addSection" class="form-label">Section</label>
-                        <select class="form-select" id="addSection" name="section_id" required>
-                            <option value="">Select Section</option>
-                            <?php foreach ($sections as $id => $section): ?>
-                                <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($section['section'] . ' (' . $section['course_name'] . ', ' . $section['school_year'] . ')'); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="mb-3">
                         <label for="addSchoolYear" class="form-label">School Year</label>
                         <select class="form-select" id="addSchoolYear" name="year_id" required>
                             <option value="">Select School Year</option>
@@ -268,12 +260,27 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label for="addCourse" class="form-label">Course</label>
+                        <select class="form-select" id="addCourse" name="course_id" required>
+                            <option value="">Select Course</option>
+                            <?php foreach ($courses as $id => $course): ?>
+                                <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($course['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="addYearLevelGroup" style="display: none;">
                         <label for="addYearLevel" class="form-label">Year Level</label>
                         <select class="form-select" id="addYearLevel" name="year_level" required>
                             <option value="">Select Year Level</option>
                             <?php foreach ($year_levels as $level): ?>
                                 <option value="<?php echo $level; ?>"><?php echo $level; ?></option>
                             <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="addSectionGroup" style="display: none;">
+                        <label for="addSection" class="form-label">Section</label>
+                        <select class="form-select" id="addSection" name="section_id" required>
+                            <option value="">Select Section</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -305,7 +312,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
     </div>
 </div>
 
-<!-- Edit User Modal (removed phone number, added hidden profile) -->
+<!-- Edit User Modal -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -314,10 +321,9 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="editUserForm" method="POST" action="student_actions.php">
+                <form id="editUserForm" method="POST" action="/capstone-admin/admin/student_actions.php">
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" id="editId" name="id">
-                    <input type="hidden" id="editProfile" name="profile">
                     <div class="mb-3">
                         <label for="editStudentId" class="form-label">Student/Alumni ID</label>
                         <input type="text" class="form-control" id="editStudentId" name="studentid" required>
@@ -339,24 +345,6 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                         <input type="password" class="form-control" id="editPassword" name="password">
                     </div>
                     <div class="mb-3">
-                        <label for="editCourse" class="form-label">Course</label>
-                        <select class="form-select" id="editCourse" name="course_id" required>
-                            <option value="">Select Course</option>
-                            <?php foreach ($courses as $id => $course): ?>
-                                <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($course['name']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editSection" class="form-label">Section</label>
-                        <select class="form-select" id="editSection" name="section_id" required>
-                            <option value="">Select Section</option>
-                            <?php foreach ($sections as $id => $section): ?>
-                                <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($section['section'] . ' (' . $section['course_name'] . ', ' . $section['school_year'] . ')'); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="mb-3">
                         <label for="editSchoolYear" class="form-label">School Year</label>
                         <select class="form-select" id="editSchoolYear" name="year_id" required>
                             <option value="">Select School Year</option>
@@ -366,12 +354,27 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label for="editCourse" class="form-label">Course</label>
+                        <select class="form-select" id="editCourse" name="course_id" required>
+                            <option value="">Select Course</option>
+                            <?php foreach ($courses as $id => $course): ?>
+                                <option value="<?php echo $id; ?>"><?php echo htmlspecialchars($course['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="editYearLevelGroup" style="display: none;">
                         <label for="editYearLevel" class="form-label">Year Level</label>
                         <select class="form-select" id="editYearLevel" name="year_level" required>
                             <option value="">Select Year Level</option>
                             <?php foreach ($year_levels as $level): ?>
                                 <option value="<?php echo $level; ?>"><?php echo $level; ?></option>
                             <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="editSectionGroup" style="display: none;">
+                        <label for="editSection" class="form-label">Section</label>
+                        <select class="form-select" id="editSection" name="section_id" required>
+                            <option value="">Select Section</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -403,7 +406,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
     </div>
 </div>
 
-<!-- Delete Confirmation Modal remains unchanged -->
+<!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -413,7 +416,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete this user? This action cannot be undone.</p>
-                <form id="deleteUserForm" method="POST" action="student_actions.php">
+                <form id="deleteUserForm" method="POST" action="/capstone-admin/admin/student_actions.php">
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" id="deleteId" name="id">
                 </form>
@@ -427,12 +430,136 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 </div>
 
 <script>
-// Populate Edit User Modal (removed phone number, added profile)
+// Add User Modal Logic
+document.getElementById('addCourse').addEventListener('change', function () {
+    const yearLevelGroup = document.getElementById('addYearLevelGroup');
+    const sectionGroup = document.getElementById('addSectionGroup');
+    const yearLevel = document.getElementById('addYearLevel');
+    const section = document.getElementById('addSection');
+    if (this.value) {
+        yearLevelGroup.style.display = 'block';
+        yearLevel.value = ''; // Reset year level
+        sectionGroup.style.display = 'none'; // Hide section
+        section.innerHTML = '<option value="">Select Section</option>'; // Clear sections
+    } else {
+        yearLevelGroup.style.display = 'none';
+        sectionGroup.style.display = 'none';
+        yearLevel.value = '';
+        section.innerHTML = '<option value="">Select Section</option>';
+    }
+});
+
+document.getElementById('addYearLevel').addEventListener('change', function () {
+    const sectionGroup = document.getElementById('addSectionGroup');
+    const section = document.getElementById('addSection');
+    const courseId = document.getElementById('addCourse').value;
+    const schoolYearId = document.getElementById('addSchoolYear').value;
+    if (this.value && courseId && schoolYearId) {
+        sectionGroup.style.display = 'block';
+        section.innerHTML = '<option value="">Loading...</option>';
+        fetchSections(section, courseId, schoolYearId, null);
+    } else {
+        sectionGroup.style.display = 'none';
+        section.innerHTML = '<option value="">Select Section</option>';
+    }
+});
+
+document.getElementById('addSchoolYear').addEventListener('change', function () {
+    // Reset dependent fields when school year changes
+    const course = document.getElementById('addCourse');
+    const yearLevelGroup = document.getElementById('addYearLevelGroup');
+    const sectionGroup = document.getElementById('addSectionGroup');
+    const yearLevel = document.getElementById('addYearLevel');
+    const section = document.getElementById('addSection');
+    course.value = '';
+    yearLevelGroup.style.display = 'none';
+    sectionGroup.style.display = 'none';
+    yearLevel.value = '';
+    section.innerHTML = '<option value="">Select Section</option>';
+});
+
+// Edit User Modal Logic
+document.getElementById('editCourse').addEventListener('change', function () {
+    const yearLevelGroup = document.getElementById('editYearLevelGroup');
+    const sectionGroup = document.getElementById('editSectionGroup');
+    const yearLevel = document.getElementById('editYearLevel');
+    const section = document.getElementById('editSection');
+    if (this.value) {
+        yearLevelGroup.style.display = 'block';
+        yearLevel.value = ''; // Reset year level
+        sectionGroup.style.display = 'none'; // Hide section
+        section.innerHTML = '<option value="">Select Section</option>'; // Clear sections
+    } else {
+        yearLevelGroup.style.display = 'none';
+        sectionGroup.style.display = 'none';
+        yearLevel.value = '';
+        section.innerHTML = '<option value="">Select Section</option>';
+    }
+});
+
+document.getElementById('editYearLevel').addEventListener('change', function () {
+    const sectionGroup = document.getElementById('editSectionGroup');
+    const section = document.getElementById('editSection');
+    const courseId = document.getElementById('editCourse').value;
+    const schoolYearId = document.getElementById('editSchoolYear').value;
+    if (this.value && courseId && schoolYearId) {
+        sectionGroup.style.display = 'block';
+        section.innerHTML = '<option value="">Loading...</option>';
+        fetchSections(section, courseId, schoolYearId, null);
+    } else {
+        sectionGroup.style.display = 'none';
+        section.innerHTML = '<option value="">Select Section</option>';
+    }
+});
+
+document.getElementById('editSchoolYear').addEventListener('change', function () {
+    // Reset dependent fields when school year changes
+    const course = document.getElementById('editCourse');
+    const yearLevelGroup = document.getElementById('editYearLevelGroup');
+    const sectionGroup = document.getElementById('editSectionGroup');
+    const yearLevel = document.getElementById('editYearLevel');
+    const section = document.getElementById('editSection');
+    course.value = '';
+    yearLevelGroup.style.display = 'none';
+    sectionGroup.style.display = 'none';
+    yearLevel.value = '';
+    section.innerHTML = '<option value="">Select Section</option>';
+});
+
+// Fetch Sections via AJAX
+function fetchSections(selectElement, courseId, schoolYearId, selectedSectionId) {
+    fetch(`/capstone-admin/admin/student_actions.php?action=get_sections&course_id=${courseId}&school_year_id=${schoolYearId}`)
+        .then(response => response.json())
+        .then(data => {
+            selectElement.innerHTML = '<option value="">Select Section</option>';
+            if (data.status === 200 && data.data.length > 0) {
+                data.data.forEach(section => {
+                    const option = document.createElement('option');
+                    option.value = section.id;
+                    option.textContent = `${section.section} (${section.course_name}, ${section.school_year})`;
+                    if (selectedSectionId && section.id == selectedSectionId) {
+                        option.selected = true;
+                    }
+                    selectElement.appendChild(option);
+                });
+            } else {
+                selectElement.innerHTML = '<option value="">No sections available</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching sections:', error);
+            selectElement.innerHTML = '<option value="">Error loading sections</option>';
+        });
+}
+
+// Populate Edit User Modal
 document.querySelectorAll('.edit-user-btn').forEach(button => {
     button.addEventListener('click', function () {
         const modal = document.getElementById('editModal');
         const modalBody = modal.querySelector('.modal-body');
         const form = document.getElementById('editUserForm');
+        const yearLevelGroup = document.getElementById('editYearLevelGroup');
+        const sectionGroup = document.getElementById('editSectionGroup');
 
         const spinner = document.createElement('div');
         spinner.className = 'text-center';
@@ -442,24 +569,38 @@ document.querySelectorAll('.edit-user-btn').forEach(button => {
         modalBody.appendChild(spinner);
 
         const id = this.dataset.id;
-        fetch('student_actions.php?action=get&id=' + id)
+        fetch('/capstone-admin/admin/student_actions.php?action=get&id=' + id)
             .then(response => response.json())
             .then(data => {
                 if (data.status === 200) {
                     const user = data.data;
                     document.getElementById('editId').value = user.id;
-                    document.getElementById('editProfile').value = user.profile || '../assets/images/default_profile.png';
                     document.getElementById('editStudentId').value = user.studentid;
                     document.getElementById('editFirstName').value = user.firstname;
                     document.getElementById('editLastName').value = user.lastname;
                     document.getElementById('editEmail').value = user.email;
-                    document.getElementById('editCourse').value = user.course_id || '';
-                    document.getElementById('editSection').value = user.section_id || '';
                     document.getElementById('editSchoolYear').value = user.year_id || '';
+                    document.getElementById('editCourse').value = user.course_id || '';
                     document.getElementById('editYearLevel').value = user.year_level || '';
                     document.getElementById('editRole').value = user.role;
                     document.getElementById('editIsBan').value = user.is_ban;
                     document.getElementById('editTerms').checked = user.terms == 1;
+
+                    // Show/hide fields based on course and year level
+                    if (user.course_id) {
+                        yearLevelGroup.style.display = 'block';
+                        if (user.year_level && user.course_id && user.year_id) {
+                            sectionGroup.style.display = 'block';
+                            fetchSections(document.getElementById('editSection'), user.course_id, user.year_id, user.section_id);
+                        } else {
+                            sectionGroup.style.display = 'none';
+                            document.getElementById('editSection').innerHTML = '<option value="">Select Section</option>';
+                        }
+                    } else {
+                        yearLevelGroup.style.display = 'none';
+                        sectionGroup.style.display = 'none';
+                        document.getElementById('editSection').innerHTML = '<option value="">Select Section</option>';
+                    }
                 } else {
                     alert('Error: ' + data.message);
                 }
@@ -475,7 +616,7 @@ document.querySelectorAll('.edit-user-btn').forEach(button => {
     });
 });
 
-// Populate Delete User Modal remains unchanged
+// Populate Delete User Modal
 document.querySelectorAll('.delete-user-btn').forEach(button => {
     button.addEventListener('click', function () {
         const id = this.dataset.id;

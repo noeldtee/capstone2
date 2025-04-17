@@ -29,7 +29,7 @@ switch ($action) {
         $lastname = validate($_POST['lastname']);
         $email = validate($_POST['email']);
         $password = validate($_POST['password']);
-        $profile = validate($_POST['profile']) ?: '../assets/images/default_profile.png';
+        $profile = '../assets/images/default_profile.png'; // Hardcoded default
         $course_id = (int)validate($_POST['course_id']);
         $section_id = (int)validate($_POST['section_id']);
         $year_id = (int)validate($_POST['year_id']);
@@ -102,7 +102,6 @@ switch ($action) {
 
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-        // Removed number, added profile
         $stmt = $conn->prepare("INSERT INTO users (studentid, firstname, lastname, email, profile, password, course_id, section_id, year_id, year_level, role, terms, is_ban, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         $stmt->bind_param("ssssssiiissii", $studentid, $firstname, $lastname, $email, $profile, $hashed_password, $course_id, $section_id, $year_id, $year_level, $role, $terms, $is_ban);
         if ($stmt->execute()) {
@@ -134,7 +133,7 @@ switch ($action) {
         $firstname = validate($_POST['firstname']);
         $lastname = validate($_POST['lastname']);
         $email = validate($_POST['email']);
-        $profile = validate($_POST['profile']) ?: '../assets/images/default_profile.png';
+        $profile = '../assets/images/default_profile.png'; // Hardcoded default
         $password = isset($_POST['password']) ? trim($_POST['password']) : '';
         $course_id = (int)validate($_POST['course_id']);
         $section_id = (int)validate($_POST['section_id']);
@@ -202,7 +201,6 @@ switch ($action) {
         }
         $stmt->close();
 
-        // Removed number, added profile
         if (!empty($password)) {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $conn->prepare("UPDATE users SET studentid = ?, firstname = ?, lastname = ?, email = ?, profile = ?, password = ?, course_id = ?, section_id = ?, year_id = ?, year_level = ?, role = ?, terms = ?, is_ban = ?, updated_at = NOW() WHERE id = ?");
@@ -285,7 +283,6 @@ switch ($action) {
             exit;
         }
 
-        // Removed number, added profile
         $stmt = $conn->prepare("SELECT id, studentid, firstname, lastname, email, profile, course_id, section_id, year_id, year_level, role, terms, is_ban FROM users WHERE id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
@@ -300,5 +297,50 @@ switch ($action) {
         header('Content-Type: application/json');
         echo json_encode($response);
         exit;
+
+    case 'get_sections':
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        ini_set('display_errors', 0);
+        error_reporting(E_ALL);
+
+        $course_id = isset($_GET['course_id']) && is_numeric($_GET['course_id']) ? (int)$_GET['course_id'] : 0;
+        $school_year_id = isset($_GET['school_year_id']) && is_numeric($_GET['school_year_id']) ? (int)$_GET['school_year_id'] : 0;
+
+        if (!$course_id || !$school_year_id) {
+            $response = ['status' => 400, 'message' => 'Invalid course or school year ID.'];
+            header('Content-Type: application/json');
+            echo json_encode($response);
+            exit;
+        }
+
+        if (!$conn) {
+            $response = ['status' => 500, 'message' => 'Database connection failed.'];
+            header('Content-Type: application/json');
+            echo json_encode($response);
+            exit;
+        }
+
+        $stmt = $conn->prepare("SELECT s.id, s.section, c.name AS course_name, sy.year AS school_year 
+                                FROM sections s 
+                                JOIN courses c ON s.course_id = c.id 
+                                JOIN school_years sy ON s.school_year_id = sy.id 
+                                WHERE s.course_id = ? AND s.school_year_id = ?");
+        $stmt->bind_param("ii", $course_id, $school_year_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $sections = [];
+        while ($row = $result->fetch_assoc()) {
+            $sections[] = $row;
+        }
+
+        $stmt->close();
+        $response = ['status' => 200, 'message' => 'Sections fetched successfully.', 'data' => $sections];
+        header('Content-Type: application/json');
+        echo json_encode($response);
+        exit;
 }
+
+redirect('students.php?' . http_build_query($_GET), 'Invalid action.', 'danger');
 ?>

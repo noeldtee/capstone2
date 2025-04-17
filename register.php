@@ -2,8 +2,6 @@
 $page_title = "Register Form";
 include('includes/header.php');
 
-redirectIfLoggedIn(); // Redirect if already logged in
-
 // Fetch initial school years
 $query = "SELECT * FROM school_years WHERE is_active = 1 ORDER BY year DESC";
 $result = mysqli_query($conn, $query);

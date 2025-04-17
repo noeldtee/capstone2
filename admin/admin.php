@@ -77,19 +77,21 @@ $stmt->close();
         <small>Add, edit, or delete administrative staff accounts.</small>
     </div>
     <div class="page-content">
+        <!-- Display Messages -->
+        <?php
+        // Convert $_SESSION['error'] to $_SESSION['message'] for consistency
+        if (isset($_SESSION['error'])) {
+            $_SESSION['message'] = $_SESSION['error'];
+            $_SESSION['message_type'] = 'danger';
+            unset($_SESSION['error']);
+        }
+        ?>
         <?php if (isset($_SESSION['message'])): ?>
-            <div class="alert alert-<?php echo $_SESSION['message_type']; ?> alert-dismissible fade show" role="alert">
+            <div class="alert alert-<?php echo htmlspecialchars($_SESSION['message_type']); ?> alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x" style="z-index: 1050; margin-top: 20px;" role="alert">
                 <?php echo htmlspecialchars($_SESSION['message']); ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
-        <?php endif; ?>
-        <?php if (isset($_SESSION['error'])): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <?php echo htmlspecialchars($_SESSION['error']); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <?php unset($_SESSION['error']); ?>
         <?php endif; ?>
 
         <!-- Filter Form -->
@@ -147,7 +149,7 @@ $stmt->close();
                         <?php else: ?>
                             <?php foreach ($admins as $admin): ?>
                                 <tr>
-                                    <td><img src="<?php echo htmlspecialchars($admin['profile'] ? '' . $admin['profile'] : '../assets/images/default_profile.png'); ?>" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"></td>
+                                    <td><img src="<?php echo htmlspecialchars($admin['profile'] ?? '../assets/images/default_profile.png'); ?>" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"></td>
                                     <td><?php echo htmlspecialchars($admin['full_name']); ?></td>
                                     <td><?php echo htmlspecialchars($admin['email']); ?></td>
                                     <td><?php echo htmlspecialchars($admin['number']); ?></td>

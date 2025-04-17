@@ -48,61 +48,17 @@ if (isset($_POST['register_btn'])) {
     $birthdate = new DateTime($data['birthdate']);
     $now = new DateTime();
     $age = $now->diff($birthdate)->y;
-    if ($age < 18 || $age > 60) {
-        redirect('register.php', 'Age must be between 18 and 60 years.', 'danger');
+    if ($age < 14 || $age > 60) {
+        redirect('register.php', 'Age must be between 14 and 60 years.', 'danger');
         exit;
     }
 
-    // Fetch school year, course, and section details (for validation only)
-    $year_id = (int)$data['year_id'];
-    $course_id = (int)$data['course_id'];
-    $section_id = (int)$data['section_id'];
-
-    $stmt = $conn->prepare("SELECT year FROM school_years WHERE id = ?");
-    $stmt->bind_param("i", $year_id);
-    $stmt->execute();
-    $year_result = $stmt->get_result()->fetch_assoc();
-    $year = $year_result ? $year_result['year'] : null;
-    if (!$year) {
-        redirect('register.php', 'Invalid school year selected.', 'danger');
-        exit;
-    }
-
-    $stmt = $conn->prepare("SELECT name FROM courses WHERE id = ?");
-    $stmt->bind_param("i", $course_id);
-    $stmt->execute();
-    $course_result = $stmt->get_result()->fetch_assoc();
-    $course = $course_result ? $course_result['name'] : null;
-    if (!$course) {
-        redirect('register.php', 'Invalid course selected.', 'danger');
-        exit;
-    }
-
-    $stmt = $conn->prepare("SELECT section FROM sections WHERE id = ?");
-    $stmt->bind_param("i", $section_id);
-    $stmt->execute();
-    $section_result = $stmt->get_result()->fetch_assoc();
-    $section = $section_result ? $section_result['section'] : null;
-    if (!$section) {
-        redirect('register.php', 'Invalid section selected.', 'danger');
-        exit;
-    }
-
-    // Check if studentid already exists
-    $stmt = $conn->prepare("SELECT * FROM users WHERE studentid = ? LIMIT 1");
-    $stmt->bind_param("s", $data['studentid']);
+    // Check if studentid, email, or number already exists
+    $stmt = $conn->prepare("SELECT * FROM users WHERE studentid = ? OR email = ? OR number = ? LIMIT 1");
+    $stmt->bind_param("sss", $data['studentid'], $data['email'], $data['number']);
     $stmt->execute();
     if ($stmt->get_result()->num_rows > 0) {
-        redirect('register.php', 'Student ID already exists.', 'danger');
-        exit;
-    }
-
-    // Check if email already exists
-    $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
-    $stmt->bind_param("s", $data['email']);
-    $stmt->execute();
-    if ($stmt->get_result()->num_rows > 0) {
-        redirect('register.php', 'Email already exists.', 'danger');
+        redirect('register.php', 'Student ID, Email, or Phone Number already exists.', 'danger');
         exit;
     }
 
@@ -120,9 +76,9 @@ if (isset($_POST['register_btn'])) {
             exit;
         }
         $fileName = time() . "_" . basename($profile['name']);
-        $target = "uploads/" . $fileName;
-        if (!file_exists('uploads')) {
-            mkdir('uploads', 0777, true);
+        $target = "assets/images/" . $fileName; // Save to assets/images/
+        if (!file_exists('assets/images')) {
+            mkdir('assets/images', 0777, true);
         }
         if (move_uploaded_file($profile['tmp_name'], $target)) {
             $profilePath = $target;
@@ -144,10 +100,9 @@ if (isset($_POST['register_btn'])) {
     $currentSchoolYear = "$lastYear-$currentYear";
     $previousSchoolYear = ($lastYear - 1) . "-$lastYear";
 
-    // Fix role determination: Extract startYear from $year
-    list($startYear, $endYear) = explode('-', $year);
+    list($startYear, $endYear) = explode('-', $data['year_id']);
     $startYear = (int)$startYear;
-    if ($year === $currentSchoolYear || $year === $previousSchoolYear) {
+    if ($data['year_id'] === $currentSchoolYear || $data['year_id'] === $previousSchoolYear) {
         $role = 'student';
     } elseif ($startYear < $lastYear - 1) {
         $role = 'alumni';
@@ -167,9 +122,8 @@ if (isset($_POST['register_btn'])) {
     $terms = $data['terms'] ? 1 : 0;
     $verify_status = 0;
 
-    // Updated INSERT query to match the table structure
     $stmt = $conn->prepare("INSERT INTO users (studentid, firstname, lastname, email, number, password, profile, gender, birthdate, course_id, section_id, year_id, year_level, role, terms, verify_status, verify_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssssssssiiisssis", $studentid, $firstname, $lastname, $email, $number, $hashedPassword, $profilePath, $gender, $birthdate, $course_id, $section_id, $year_id, $year_level, $role, $terms, $verify_status, $verify_token);
+    $stmt->bind_param("sssssssssiiisssis", $studentid, $firstname, $lastname, $email, $number, $hashedPassword, $profilePath, $gender, $birthdate, $data['course_id'], $data['section_id'], $data['year_id'], $year_level, $role, $terms, $verify_status, $verify_token);
 
     if ($stmt->execute()) {
         try {

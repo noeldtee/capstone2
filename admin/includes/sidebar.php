@@ -93,10 +93,3 @@
         </div>
     </div>
 </div>
-
-<script>
-    // Handle logout confirmation
-    document.getElementById('confirmLogout').addEventListener('click', function() {
-        window.location.href = '../logout.php';
-    });
-</script>

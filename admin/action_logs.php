@@ -1,9 +1,11 @@
 <?php
+
 $page_title = "Action Logs";
 require 'includes/header.php';
 
 // Handle bulk delete action
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'bulk_delete') {
+    global $conn;
     if (!empty($_POST['log_ids'])) {
         $log_ids = array_map('intval', $_POST['log_ids']); // Sanitize IDs
         $placeholders = implode(',', array_fill(0, count($log_ids), '?'));
@@ -30,8 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $_SESSION['message'] = "No logs selected for deletion.";
         $_SESSION['message_type'] = "warning";
     }
-    header("Location: action_logs.php?page=" . (isset($_GET['page']) ? $_GET['page'] : 1));
-    exit();
+    // No redirect; continue rendering the page
 }
 
 // Pagination, search, filter, and sort settings
@@ -138,20 +139,19 @@ $stmt->close();
 ?>
 
 <link rel="stylesheet" href="../assets/css/admin_dashboard.css">
+<?php if (isset($_SESSION['message'])): ?>
+    <div class="alert alert-<?php echo $_SESSION['message_type']; ?> alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x" style="z-index: 1050; margin-top: 20px;" role="alert">
+        <?php echo htmlspecialchars($_SESSION['message']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
+<?php endif; ?>
 <main>
     <div class="page-header">
         <span>Action Logs</span><br>
         <small>Track all admin activities and changes in the system.</small>
     </div>
     <div class="page-content">
-        <?php if (isset($_SESSION['message'])): ?>
-            <div class="alert alert-<?php echo $_SESSION['message_type']; ?> alert-dismissible fade show" role="alert">
-                <?php echo htmlspecialchars($_SESSION['message']); ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
-        <?php endif; ?>
-
         <!-- Filter Form -->
         <div class="mb-3">
             <form method="GET" action="action_logs.php" class="row g-3" id="filterForm">
@@ -186,7 +186,7 @@ $stmt->close();
         <form id="bulkActionForm" method="POST" action="action_logs.php">
             <input type="hidden" name="action" value="bulk_delete">
             <div class="records table-responsive">
-                <div class="record-header">
+                <div class="record-header.remaining">
                     <div class="add">
                         <span>All Actions (<?php echo $total_logs; ?> found)</span>
                     </div>
@@ -256,4 +256,4 @@ $stmt->close();
     });
 </script>
 
-<?php require 'includes/footer.php'; // Changed to require_once ?>
+<?php require 'includes/footer.php'; ?>
