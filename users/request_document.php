@@ -4,7 +4,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Start session if not already started (required for $_SESSION['user_id'])
+// Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -12,14 +12,14 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include necessary configurations and functions
 require_once $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/config/function.php';
 
-// Ensure user is authenticated (similar to header.php logic, but without output)
+// Ensure user is authenticated
 if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['student', 'alumni'])) {
     redirect('../index.php', 'Please log in as a student or alumni to access this page.', 'warning');
     exit();
 }
 
 // PayMongo API keys
-$paymongo_secret_key = 'sk_test_qCKzU9gWR64WpE2ftVFHPVgs'; // Your test secret key
+$paymongo_secret_key = 'sk_test_qCKzU9gWR64WpE2ftVFHPVgs';
 
 // Helper function to determine the current semester
 function getCurrentSemester() {
@@ -37,6 +37,7 @@ function getCurrentSemester() {
 // Initialize variables for form feedback
 $success_message = '';
 $error_message = '';
+$show_success_modal = false;
 
 // Check for cancellation from PayMongo
 if (isset($_GET['error']) && $_GET['error'] === 'cancelled') {
@@ -132,31 +133,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
         }
         $stmt->close();
 
-        // If no errors, create requests and initiate payment
+        // If no errors, proceed based on total amount
         if (!$has_error) {
-            // Insert requests into database
-            $request_ids = [];
-            $stmt = $conn->prepare("INSERT INTO requests (user_id, document_type, quantity, unit_price, amount, payment_status, status, remarks, file_path, requested_date, created_at) VALUES (?, ?, 1, ?, ?, 'pending', 'Pending', ?, ?, NOW(), NOW())");
-            foreach ($documents_to_request as $doc) {
-                $amount = (int)($doc['unit_price'] * 100);
-                $unit_price = (float)$doc['unit_price'];
-                $stmt->bind_param("isdiss", $user_id, $doc['document_type'], $unit_price, $amount, $remarks, $doc['file_path']);
-                if ($stmt->execute()) {
-                    $request_ids[] = $conn->insert_id;
-                } else {
-                    error_log("Failed to insert request for {$doc['document_type']}: " . $stmt->error);
-                    $error_message = "Failed to save request for {$doc['document_type']}.";
-                    $has_error = true;
-                    break;
+            if ($total_amount == 0) {
+                // No payment required, directly insert requests
+                $request_ids = [];
+                $stmt = $conn->prepare("INSERT INTO requests (user_id, document_type, quantity, unit_price, amount, payment_status, status, remarks, file_path, requested_date, created_at) VALUES (?, ?, 1, ?, ?, 'paid', 'Pending', ?, ?, NOW(), NOW())");
+                foreach ($documents_to_request as $doc) {
+                    $amount = (int)($doc['unit_price'] * 100);
+                    $unit_price = (float)$doc['unit_price'];
+                    $stmt->bind_param("isdiss", $user_id, $doc['document_type'], $unit_price, $amount, $remarks, $doc['file_path']);
+                    if ($stmt->execute()) {
+                        $request_ids[] = $conn->insert_id;
+                    } else {
+                        error_log("Failed to insert request for {$doc['document_type']}: " . $stmt->error);
+                        $error_message = "Failed to save request for {$doc['document_type']}.";
+                        $has_error = true;
+                        break;
+                    }
                 }
-            }
-            $stmt->close();
+                $stmt->close();
 
-            if (!$has_error) {
-                // Create PayMongo Checkout Session
+                if (!$has_error) {
+                    // Create notifications for student
+                    $message = "Request for document(s) #" . implode(', #', $request_ids) . " was successful.";
+                    $link = "dashboard.php";
+                    $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
+                    $stmt->bind_param("iss", $user_id, $message, $link);
+                    if ($stmt->execute()) {
+                        error_log("Notification created for user $user_id: $message");
+                    } else {
+                        error_log("Failed to create notification for user $user_id: " . $stmt->error);
+                    }
+                    $stmt->close();
+
+                    // Notify admins
+                    $stmt = $conn->prepare("SELECT id FROM users WHERE role = 'admin'");
+                    $stmt->execute();
+                    $admins = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $stmt->close();
+
+                    $stmt = $conn->prepare("SELECT firstname, lastname FROM users WHERE id = ?");
+                    $stmt->bind_param("i", $user_id);
+                    $stmt->execute();
+                    $user = $stmt->get_result()->fetch_assoc();
+                    $stmt->close();
+
+                    $student_name = $user['firstname'] . ' ' . $user['lastname'];
+                    $admin_message = "Student $student_name submitted a request for document(s) #" . implode(', #', $request_ids) . ".";
+                    $admin_link = "/capstone-admin/admin/request.php?id=" . $request_ids[0];
+
+                    foreach ($admins as $admin) {
+                        $stmt = $conn->prepare("INSERT INTO admin_notifications (admin_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
+                        $stmt->bind_param("iss", $admin['id'], $admin_message, $admin_link);
+                        if ($stmt->execute()) {
+                            error_log("Admin notification created for admin {$admin['id']}: $admin_message");
+                        } else {
+                            error_log("Failed to create admin notification for admin {$admin['id']}: " . $stmt->error);
+                        }
+                        $stmt->close();
+                    }
+
+                    // Show success modal
+                    $show_success_modal = true;
+                    $success_message = "Request for document(s) #" . implode(', #', $request_ids) . " was successful.";
+                }
+            } else {
+                // Payment required, create PayMongo Checkout Session
+                $_SESSION['remarks'] = $remarks; // Store remarks in session for PayMongo flow
                 $curl = curl_init();
                 $description = "Payment for document request: " . implode(', ', $document_types);
-                // Build line_items from documents_to_request
                 $line_items = [];
                 foreach ($documents_to_request as $doc) {
                     $line_items[] = [
@@ -175,13 +221,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                             'description' => $description,
                             'line_items' => $line_items,
                             'payment_method_types' => ['gcash', 'card'],
-                            'success_url' => 'https://9b67-120-29-78-198.ngrok-free.app/capstone-admin/users/request_success.php?request_ids=' . implode(',', $request_ids),
+                            'success_url' => 'https://9b67-120-29-78-198.ngrok-free.app/capstone-admin/users/request_success.php?request_ids=' . urlencode(json_encode($documents_to_request)),
                             'cancel_url' => 'https://9b67-120-29-78-198.ngrok-free.app/capstone-admin/users/request_document.php?error=cancelled',
-                            'reference_number' => 'REQ_' . $request_ids[0],
+                            'reference_number' => 'REQ_' . time(),
                             'send_email_receipt' => true,
                             'show_description' => true,
                             'show_line_items' => true,
-                            'metadata' => ['request_ids' => $request_ids, 'user_id' => $user_id],
+                            'metadata' => ['user_id' => $user_id, 'documents' => $documents_to_request, 'remarks' => $remarks],
                         ]
                     ]
                 ];
@@ -209,14 +255,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                     $response_data = json_decode($response, true);
                     error_log("PayMongo response: " . json_encode($response_data));
                     if (isset($response_data['data']['id']) && isset($response_data['data']['attributes']['checkout_url'])) {
-                        // Store checkout_session_id as payment_link_id
-                        $checkout_session_id = $response_data['data']['id'];
-                        foreach ($request_ids as $request_id) {
-                            $stmt = $conn->prepare("UPDATE requests SET payment_link_id = ? WHERE id = ?");
-                            $stmt->bind_param("si", $checkout_session_id, $request_id);
-                            $stmt->execute();
-                            $stmt->close();
-                        }
+                        // Store checkout_session_id in session
+                        $_SESSION['checkout_session_id'] = $response_data['data']['id'];
                         // Redirect to PayMongo checkout
                         header('Location: ' . $response_data['data']['attributes']['checkout_url']);
                         exit;
@@ -228,25 +268,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
             }
         }
     }
-    if (isset($response_data['data']['id']) && isset($response_data['data']['attributes']['checkout_url'])) {
-        $checkout_session_id = $response_data['data']['id'];
-        error_log("Saving checkout_session_id: $checkout_session_id for request_ids: " . implode(',', $request_ids));
-        foreach ($request_ids as $request_id) {
-            $stmt = $conn->prepare("UPDATE requests SET payment_link_id = ? WHERE id = ?");
-            $stmt->bind_param("si", $checkout_session_id, $request_id);
-            $stmt->execute();
-            $stmt->close();
-        }
-        header('Location: ' . $response_data['data']['attributes']['checkout_url']);
-        exit;
-    } else {
-        error_log("Failed to create PayMongo Checkout Session: " . json_encode($response_data));
-        $_SESSION['message'] = 'Failed to initiate payment. Please try again.';
-        $_SESSION['message_type'] = 'danger';
-        header('Location: request_document.php');
-        exit;
-    }
-    // If there's an error, store the message in the session and redirect back to request_document.php
+
+    // If there's an error, store the message in the session and redirect back
     if ($error_message) {
         $_SESSION['message'] = $error_message;
         $_SESSION['message_type'] = 'danger';
@@ -255,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
     }
 }
 
-// Fetch available documents (still needed for the form)
+// Fetch available documents for the form
 $stmt = $conn->prepare("SELECT * FROM documents WHERE is_active = 1");
 $stmt->execute();
 $documents = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -325,6 +348,24 @@ include('includes/header.php');
     </div>
 </main>
 
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="successModalLabel">Request Successful</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <?php echo htmlspecialchars($success_message); ?>
+            </div>
+            <div class="modal-footer">
+                <a href="dashboard.php" class="btn btn-primary">Go to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const documentSelect = document.getElementById('document_types');
@@ -364,6 +405,12 @@ include('includes/header.php');
             }
             updateForm();
         });
+
+        // Show success modal if applicable
+        <?php if ($show_success_modal): ?>
+            var successModal = new bootstrap.Modal(document.getElementById('successModal'));
+            successModal.show();
+        <?php endif; ?>
     });
 </script>
 
