@@ -1,15 +1,6 @@
 <?php
-
 $page_title = "Register Form";
 include('includes/header.php');
-
-// Fetch school years with status 'Current' or 'Past'
-$query = "SELECT id, year, status FROM school_years WHERE status IN ('Current', 'Past') ORDER BY year DESC";
-$result = mysqli_query($conn, $query);
-$school_years = [];
-while ($row = mysqli_fetch_assoc($result)) {
-    $school_years[] = $row;
-}
 
 // Fetch Terms and Conditions from settings
 $stmt = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'terms_and_conditions'");
@@ -39,6 +30,8 @@ unset($_SESSION['form_data']);
                     </div>
                     <div class="card-body">
                         <form action="/capstone-admin/code.php" method="POST" enctype="multipart/form-data">
+
+
                             <!-- Profile Upload -->
                             <div class="mb-3 text-center">
                                 <label for="profile" class="form-label">Profile Picture</label>
@@ -49,6 +42,16 @@ unset($_SESSION['form_data']);
                                 <?php if (isset($form_data) && isset($profile)): ?>
                                     <small class="form-text text-danger">Please re-upload your profile picture.</small>
                                 <?php endif; ?>
+                            </div>
+
+                            <!-- Role Dropdown -->
+                            <div class="form-floating mb-3">
+                                <select name="role" class="form-select" id="role" required>
+                                    <option value="" selected disabled>Select Role</option>
+                                    <option value="student" <?= isset($form_data['role']) && $form_data['role'] === 'student' ? 'selected' : '' ?>>Student</option>
+                                    <option value="alumni" <?= isset($form_data['role']) && $form_data['role'] === 'alumni' ? 'selected' : '' ?>>Alumni</option>
+                                </select>
+                                <label for="role">Role</label>
                             </div>
 
                             <!-- First Name, Middle Name, and Last Name -->
@@ -77,11 +80,6 @@ unset($_SESSION['form_data']);
                             <div class="form-floating mb-3">
                                 <select name="year_id" class="form-select" id="school_year" required>
                                     <option value="" selected disabled>Select School Year</option>
-                                    <?php foreach ($school_years as $sy): ?>
-                                        <option value="<?= $sy['id'] ?>" data-status="<?= htmlspecialchars($sy['status']) ?>" <?= isset($form_data['year_id']) && $form_data['year_id'] == $sy['id'] ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($sy['year']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
                                 </select>
                                 <label for="school_year">School Year</label>
                             </div>
@@ -202,226 +200,273 @@ unset($_SESSION['form_data']);
 </div>
 
 <script>
-// Profile picture preview (unchanged)
-const profileInput = document.getElementById('profile');
-const profilePreview = document.getElementById('profile-preview');
-const removeBtn = document.getElementById('remove-profile');
+    // Profile picture preview
+    const profileInput = document.getElementById('profile');
+    const profilePreview = document.getElementById('profile-preview');
+    const removeBtn = document.getElementById('remove-profile');
 
-function previewImage(event) {
-    if (event.target.files && event.target.files[0]) {
-        profilePreview.src = URL.createObjectURL(event.target.files[0]);
-        profilePreview.style.display = 'block';
-        removeBtn.style.display = 'inline-block';
+    function previewImage(event) {
+        if (event.target.files && event.target.files[0]) {
+            profilePreview.src = URL.createObjectURL(event.target.files[0]);
+            profilePreview.style.display = 'block';
+            removeBtn.style.display = 'inline-block';
+        }
     }
-}
 
-function removeImage() {
-    profileInput.value = '';
-    profilePreview.style.display = 'none';
-    profilePreview.src = '#';
-    removeBtn.style.display = 'none';
-}
+    function removeImage() {
+        profileInput.value = '';
+        profilePreview.style.display = 'none';
+        profilePreview.src = '#';
+        removeBtn.style.display = 'none';
+    }
 
-// Dynamic field handling (updated to retain values)
-const schoolYearSelect = document.getElementById('school_year');
-const courseSelect = document.getElementById('course');
-const yearLevelSelect = document.getElementById('year_level');
-const sectionSelect = document.getElementById('section');
-const courseContainer = document.getElementById('course-container');
-const yearLevelContainer = document.getElementById('year-level-container');
-const sectionContainer = document.getElementById('section-container');
+    // Dynamic field handling
+    const roleSelect = document.getElementById('role');
+    const schoolYearSelect = document.getElementById('school_year');
+    const courseSelect = document.getElementById('course');
+    const yearLevelSelect = document.getElementById('year_level');
+    const sectionSelect = document.getElementById('section');
+    const courseContainer = document.getElementById('course-container');
+    const yearLevelContainer = document.getElementById('year-level-container');
+    const sectionContainer = document.getElementById('section-container');
 
-// Initialize form based on stored values
-document.addEventListener('DOMContentLoaded', function() {
-    <?php if (isset($form_data['year_id'])): ?>
-        fetchCourses();
-        courseContainer.style.display = 'block';
-        courseSelect.disabled = false;
+    // Fetch school years based on role
+    function fetchSchoolYears(role) {
+        if (!role) {
+            schoolYearSelect.innerHTML = '<option value="" selected disabled>Select School Year</option>';
+            return;
+        }
+        fetch(`/capstone-admin/fetch_options.php?action=school_years&role=${encodeURIComponent(role)}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
+                return response.json();
+            })
+            .then(data => {
+                console.log('School years data:', data);
+                schoolYearSelect.innerHTML = '<option value="" selected disabled>Select School Year</option>';
+                if (data.status === 'success' && data.school_years && data.school_years.length > 0) {
+                    data.school_years.forEach(sy => {
+                        const option = document.createElement('option');
+                        option.value = sy.id;
+                        option.textContent = sy.year;
+                        schoolYearSelect.appendChild(option);
+                    });
+                } else {
+                    schoolYearSelect.innerHTML += '<option value="" disabled>No school years available</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching school years:', error);
+                schoolYearSelect.innerHTML = '<option value="" selected disabled>Error loading school years</option>';
+            });
+    }
 
-        // Wait for courses to load, then set the selected course
-        setTimeout(() => {
-            <?php if (isset($form_data['course_id'])): ?>
-                courseSelect.value = '<?= $form_data['course_id'] ?>';
-                yearLevelContainer.style.display = 'block';
-                yearLevelSelect.disabled = false;
-
-                // Wait for year level to be set, then fetch sections
+    // Initialize form based on stored values
+    document.addEventListener('DOMContentLoaded', function() {
+        <?php if (isset($form_data['role'])): ?>
+            roleSelect.value = '<?= $form_data['role'] ?>';
+            fetchSchoolYears(roleSelect.value);
+            <?php if (isset($form_data['year_id'])): ?>
                 setTimeout(() => {
-                    <?php if (isset($form_data['year_level'])): ?>
-                        yearLevelSelect.value = '<?= $form_data['year_level'] ?>';
-                        const schoolYearStatus = schoolYearSelect.options[schoolYearSelect.selectedIndex].dataset.status;
-                        fetchSections(schoolYearSelect.value, courseSelect.value, yearLevelSelect.value, schoolYearStatus);
-                        sectionContainer.style.display = 'block';
-                        sectionSelect.disabled = false;
+                    schoolYearSelect.value = '<?= $form_data['year_id'] ?>';
+                    fetchCourses();
+                    courseContainer.style.display = 'block';
+                    courseSelect.disabled = false;
 
-                        // Set section after loading
-                        setTimeout(() => {
-                            <?php if (isset($form_data['section_id'])): ?>
-                                sectionSelect.value = '<?= $form_data['section_id'] ?>';
-                            <?php endif; ?>
-                        }, 500);
-                    <?php endif; ?>
+                    setTimeout(() => {
+                        <?php if (isset($form_data['course_id'])): ?>
+                            courseSelect.value = '<?= $form_data['course_id'] ?>';
+                            yearLevelContainer.style.display = 'block';
+                            yearLevelSelect.disabled = false;
+
+                            setTimeout(() => {
+                                <?php if (isset($form_data['year_level'])): ?>
+                                    yearLevelSelect.value = '<?= $form_data['year_level'] ?>';
+                                    fetchSections(schoolYearSelect.value, courseSelect.value, yearLevelSelect.value);
+                                    sectionContainer.style.display = 'block';
+                                    sectionSelect.disabled = false;
+
+                                    setTimeout(() => {
+                                        <?php if (isset($form_data['section_id'])): ?>
+                                            sectionSelect.value = '<?= $form_data['section_id'] ?>';
+                                        <?php endif; ?>
+                                    }, 500);
+                                <?php endif; ?>
+                            }, 500);
+                        <?php endif; ?>
+                    }, 500);
                 }, 500);
             <?php endif; ?>
-        }, 500);
-    <?php endif; ?>
+        <?php endif; ?>
 
-    // Scroll to the first invalid field and focus on it
-    const firstInvalidField = document.querySelector('.is-invalid');
-    if (firstInvalidField) {
-        firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        firstInvalidField.focus();
-    }
-});
+        // Scroll to the first invalid field and focus on it
+        const firstInvalidField = document.querySelector('.is-invalid');
+        if (firstInvalidField) {
+            firstInvalidField.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+            firstInvalidField.focus();
+        }
+    });
 
-function resetFields(from) {
-    if (from <= 1) {
-        courseSelect.innerHTML = '<option value="" selected disabled>Select Course</option>';
-        courseContainer.style.display = 'none';
-        courseSelect.disabled = true;
-    }
-    if (from <= 2) {
-        yearLevelSelect.value = '';
-        yearLevelContainer.style.display = 'none';
-        yearLevelSelect.disabled = true;
-    }
-    if (from <= 3) {
-        sectionSelect.innerHTML = '<option value="" selected disabled>Select Section</option>';
-        sectionContainer.style.display = 'none';
-        sectionSelect.disabled = true;
-    }
-}
+    roleSelect.addEventListener('change', function() {
+        resetFields(1);
+        fetchSchoolYears(this.value);
+    });
 
-schoolYearSelect.addEventListener('change', function() {
-    resetFields(1);
-    if (this.value) {
-        fetchCourses();
-        courseContainer.style.display = 'block';
-        courseSelect.disabled = false;
-    }
-});
+    schoolYearSelect.addEventListener('change', function() {
+        resetFields(1);
+        if (this.value) {
+            fetchCourses();
+            courseContainer.style.display = 'block';
+            courseSelect.disabled = false;
+        }
+    });
 
-courseSelect.addEventListener('change', function() {
-    resetFields(2);
-    if (this.value) {
-        yearLevelContainer.style.display = 'block';
-        yearLevelSelect.disabled = false;
-    }
-});
-
-yearLevelSelect.addEventListener('change', function() {
-    resetFields(3);
-    if (this.value) {
-        const schoolYearStatus = schoolYearSelect.options[schoolYearSelect.selectedIndex].dataset.status;
-        fetchSections(schoolYearSelect.value, courseSelect.value, this.value, schoolYearStatus);
-        sectionContainer.style.display = 'block';
-        sectionSelect.disabled = false;
-    }
-});
-
-function fetchCourses() {
-    fetch('/capstone-admin/fetch_options.php?action=courses')
-        .then(response => {
-            if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
-            return response.json();
-        })
-        .then(data => {
-            console.log('Courses data:', data);
+    function resetFields(from) {
+        if (from <= 1) {
             courseSelect.innerHTML = '<option value="" selected disabled>Select Course</option>';
-            if (data.status === 'success') {
-                if (data.courses && data.courses.length > 0) {
-                    data.courses.forEach(course => {
-                        const option = document.createElement('option');
-                        option.value = course.id;
-                        option.textContent = course.name;
-                        courseSelect.appendChild(option);
-                    });
-                } else {
-                    courseSelect.innerHTML += '<option value="" disabled>No courses available</option>';
-                }
-            } else {
-                courseSelect.innerHTML += '<option value="" disabled>Error: ' + (data.message || 'Unknown error') + '</option>';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching courses:', error);
-            courseSelect.innerHTML = '<option value="" selected disabled>Error loading courses</option>';
-        });
-}
-
-function fetchSections(schoolYearId, courseId, yearLevel, schoolYearStatus) {
-    fetch(`/capstone-admin/fetch_options.php?action=sections&school_year_id=${schoolYearId}&course_id=${courseId}&year_level=${encodeURIComponent(yearLevel)}&school_year_status=${schoolYearStatus}`)
-        .then(response => {
-            if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
-            return response.json();
-        })
-        .then(data => {
-            console.log('Sections data:', data);
+            courseContainer.style.display = 'none';
+            courseSelect.disabled = true;
+        }
+        if (from <= 2) {
+            yearLevelSelect.value = '';
+            yearLevelContainer.style.display = 'none';
+            yearLevelSelect.disabled = true;
+        }
+        if (from <= 3) {
             sectionSelect.innerHTML = '<option value="" selected disabled>Select Section</option>';
-            if (data.status === 'success') {
-                if (data.sections && data.sections.length > 0) {
-                    data.sections.forEach(section => {
-                        const option = document.createElement('option');
-                        option.value = section.id;
-                        option.textContent = section.section;
-                        sectionSelect.appendChild(option);
-                    });
+            sectionContainer.style.display = 'none';
+            sectionSelect.disabled = true;
+        }
+    }
+
+    courseSelect.addEventListener('change', function() {
+        resetFields(2);
+        if (this.value) {
+            yearLevelContainer.style.display = 'block';
+            yearLevelSelect.disabled = false;
+        }
+    });
+
+    yearLevelSelect.addEventListener('change', function() {
+        resetFields(3);
+        if (this.value) {
+            fetchSections(schoolYearSelect.value, courseSelect.value, this.value);
+            sectionContainer.style.display = 'block';
+            sectionSelect.disabled = false;
+        }
+    });
+
+    function fetchCourses() {
+        fetch('/capstone-admin/fetch_options.php?action=courses')
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Courses data:', data);
+                courseSelect.innerHTML = '<option value="" selected disabled>Select Course</option>';
+                if (data.status === 'success') {
+                    if (data.courses && data.courses.length > 0) {
+                        data.courses.forEach(course => {
+                            const option = document.createElement('option');
+                            option.value = course.id;
+                            option.textContent = course.name;
+                            courseSelect.appendChild(option);
+                        });
+                    } else {
+                        courseSelect.innerHTML += '<option value="" disabled>No courses available</option>';
+                    }
                 } else {
-                    sectionSelect.innerHTML += '<option value="" disabled>No sections available</option>';
+                    courseSelect.innerHTML += '<option value="" disabled>Error: ' + (data.message || 'Unknown error') + '</option>';
                 }
-            } else {
-                sectionSelect.innerHTML += '<option value="" disabled>Error: ' + (data.message || 'Unknown error') + '</option>';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching sections:', error);
-            sectionSelect.innerHTML = '<option value="" selected disabled>Error loading sections</option>';
-        });
-}
-
-// Password validation (unchanged)
-const password = document.getElementById('password');
-const confirmPassword = document.getElementById('confirm_password');
-const form = document.querySelector('form');
-const btn = document.getElementById('registerBtn');
-const passwordError = document.getElementById('password-error');
-
-function validatePasswords() {
-    if (password.value !== confirmPassword.value) {
-        confirmPassword.setCustomValidity('Passwords do not match.');
-        passwordError.textContent = 'Passwords do not match.';
-    } else {
-        confirmPassword.setCustomValidity('');
-        passwordError.textContent = '';
+            })
+            .catch(error => {
+                console.error('Error fetching courses:', error);
+                courseSelect.innerHTML = '<option value="" selected disabled>Error loading courses</option>';
+            });
     }
-}
 
-password.addEventListener('input', validatePasswords);
-confirmPassword.addEventListener('input', validatePasswords);
-
-form.addEventListener('submit', function(event) {
-    if (password.value !== confirmPassword.value) {
-        event.preventDefault();
-        confirmPassword.setCustomValidity('Passwords do not match.');
-        passwordError.textContent = 'Passwords do not match.';
-        confirmPassword.reportValidity();
-    } else {
-        confirmPassword.setCustomValidity('');
-        passwordError.textContent = '';
-        setTimeout(() => {
-            btn.disabled = true;
-            btn.querySelector('.spinner-border').style.display = 'inline-block';
-        }, 0);
+    function fetchSections(schoolYearId, courseId, yearLevel) {
+        fetch(`/capstone-admin/fetch_options.php?action=sections&school_year_id=${schoolYearId}&course_id=${courseId}&year_level=${encodeURIComponent(yearLevel)}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Sections data:', data);
+                sectionSelect.innerHTML = '<option value="" selected disabled>Select Section</option>';
+                if (data.status === 'success') {
+                    if (data.sections && data.sections.length > 0) {
+                        data.sections.forEach(section => {
+                            const option = document.createElement('option');
+                            option.value = section.id;
+                            option.textContent = section.section;
+                            sectionSelect.appendChild(option);
+                        });
+                    } else {
+                        sectionSelect.innerHTML += '<option value="" disabled>No sections available</option>';
+                    }
+                } else {
+                    sectionSelect.innerHTML += '<option value="" disabled>Error: ' + (data.message || 'Unknown error') + '</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching sections:', error);
+                sectionSelect.innerHTML = '<option value="" selected disabled>Error loading sections</option>';
+            });
     }
-});
 
-document.addEventListener('DOMContentLoaded', function() {
-    const invalidField = document.querySelector('.is-invalid');
-    if (invalidField) {
-        invalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        invalidField.focus();
+    // Password validation
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+    const form = document.querySelector('form');
+    const btn = document.getElementById('registerBtn');
+    const passwordError = document.getElementById('password-error');
+
+    function validatePasswords() {
+        if (password.value !== confirmPassword.value) {
+            confirmPassword.setCustomValidity('Passwords do not match.');
+            passwordError.textContent = 'Passwords do not match.';
+        } else {
+            confirmPassword.setCustomValidity('');
+            passwordError.textContent = '';
+        }
     }
-});
+
+    password.addEventListener('input', validatePasswords);
+    confirmPassword.addEventListener('input', validatePasswords);
+
+    // Form submission validation
+    form.addEventListener('submit', function(event) {
+        // Validate passwords
+        if (password.value !== confirmPassword.value) {
+            event.preventDefault();
+            confirmPassword.setCustomValidity('Passwords do not match.');
+            passwordError.textContent = 'Passwords do not match.';
+            confirmPassword.reportValidity();
+        } else {
+            confirmPassword.setCustomValidity('');
+            passwordError.textContent = '';
+            setTimeout(() => {
+                btn.disabled = true;
+                btn.querySelector('.spinner-border').style.display = 'inline-block';
+            }, 0);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const invalidField = document.querySelector('.is-invalid');
+        if (invalidField) {
+            invalidField.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+            invalidField.focus();
+        }
+    });
 </script>
 
 <?php include('includes/footer.php'); ?>
