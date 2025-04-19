@@ -1,6 +1,11 @@
 <?php
-$page_title = "Admin Management";
+$page_title = "Admin Users";
 include('includes/header.php');
+
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    redirect('dashboard.php', 'Access denied. You do not have permission to view this page.', 'danger');
+    exit();
+}
 
 // Pagination, search, filter, and sort settings
 $limit = 10;

@@ -19,7 +19,7 @@ $params = [];
 $param_types = '';
 
 if ($search) {
-    $where_clauses[] = "(CONCAT(u.firstname, ' ', u.lastname) LIKE ? OR u.studentid LIKE ? OR u.email LIKE ? OR s.section LIKE ? OR c.name LIKE ? OR sy.year LIKE ?)";
+    $where_clauses[] = "(CONCAT(u.firstname, ' ', COALESCE(u.middlename, ''), ' ', u.lastname) LIKE ? OR u.studentid LIKE ? OR u.email LIKE ? OR s.section LIKE ? OR c.name LIKE ? OR sy.year LIKE ?)";
     $search_param = "%$search%";
     $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param, $search_param, $search_param]);
     $param_types .= "ssssss";
@@ -82,7 +82,7 @@ $page = max(1, min($page, $total_pages));
 $offset = ($page - 1) * $limit;
 
 // Fetch users
-$query = "SELECT u.*, CONCAT(u.firstname, ' ', u.lastname) AS full_name, s.section AS section_name, c.name AS course_name, sy.year AS school_year 
+$query = "SELECT u.*, CONCAT(u.firstname, ' ', COALESCE(u.middlename, ''), ' ', u.lastname) AS full_name, s.section AS section_name, c.name AS course_name, sy.year AS school_year 
           FROM users u LEFT JOIN sections s ON u.section_id = s.id LEFT JOIN courses c ON u.course_id = c.id LEFT JOIN school_years sy ON u.year_id = sy.id 
           $where_sql ORDER BY $sort_by $sort_order LIMIT ? OFFSET ?";
 $params[] = $limit;
@@ -196,7 +196,9 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                                     <td><span class="badge <?php echo $user['is_ban'] == 0 ? 'bg-success' : 'bg-danger'; ?>"><?php echo $user['is_ban'] == 0 ? 'Active' : 'Inactive'; ?></span></td>
                                     <td>
                                         <button type="button" class="btn btn-primary btn-sm edit-user-btn" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<?php echo $user['id']; ?>">Edit</button>
-                                        <button type="button" class="btn btn-danger btn-sm delete-user-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="<?php echo $user['id']; ?>">Delete</button>
+                                        <?php if ($_SESSION['role'] === 'admin'): ?>
+                                            <button type="button" class="btn btn-danger btn-sm delete-user-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="<?php echo $user['id']; ?>">Delete</button>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -228,7 +230,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addUserForm" method="POST" action="/capstone-admin/admin/student_actions.php">
+                <form id="addUserForm" method="POST" action="./student_actions.php">
                     <input type="hidden" name="action" value="add">
                     <div class="mb-3">
                         <label for="addStudentId" class="form-label">Student/Alumni ID</label>
@@ -237,6 +239,10 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                     <div class="mb-3">
                         <label for="addFirstName" class="form-label">First Name</label>
                         <input type="text" class="form-control" id="addFirstName" name="firstname" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="addMiddleName" class="form-label">Middle Name</label>
+                        <input type="text" class="form-control" id="addMiddleName" name="middlename">
                     </div>
                     <div class="mb-3">
                         <label for="addLastName" class="form-label">Last Name</label>
@@ -321,7 +327,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="editUserForm" method="POST" action="/capstone-admin/admin/student_actions.php">
+                <form id="editUserForm" method="POST" action="./student_actions.php">
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" id="editId" name="id">
                     <div class="mb-3">
@@ -331,6 +337,10 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                     <div class="mb-3">
                         <label for="editFirstName" class="form-label">First Name</label>
                         <input type="text" class="form-control" id="editFirstName" name="firstname" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editMiddleName" class="form-label">Middle Name</label>
+                        <input type="text" class="form-control" id="editMiddleName" name="middlename">
                     </div>
                     <div class="mb-3">
                         <label for="editLastName" class="form-label">Last Name</label>
@@ -406,6 +416,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
     </div>
 </div>
 
+<?php if ($_SESSION['role'] === 'admin'): ?>
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -416,7 +427,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete this user? This action cannot be undone.</p>
-                <form id="deleteUserForm" method="POST" action="/capstone-admin/admin/student_actions.php">
+                <form id="deleteUserForm" method="POST" action="./student_actions.php">
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" id="deleteId" name="id">
                 </form>
@@ -428,6 +439,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <script>
 // Add User Modal Logic
@@ -465,7 +477,6 @@ document.getElementById('addYearLevel').addEventListener('change', function () {
 });
 
 document.getElementById('addSchoolYear').addEventListener('change', function () {
-    // Reset dependent fields when school year changes
     const course = document.getElementById('addCourse');
     const yearLevelGroup = document.getElementById('addYearLevelGroup');
     const sectionGroup = document.getElementById('addSectionGroup');
@@ -513,7 +524,6 @@ document.getElementById('editYearLevel').addEventListener('change', function () 
 });
 
 document.getElementById('editSchoolYear').addEventListener('change', function () {
-    // Reset dependent fields when school year changes
     const course = document.getElementById('editCourse');
     const yearLevelGroup = document.getElementById('editYearLevelGroup');
     const sectionGroup = document.getElementById('editSectionGroup');
@@ -528,7 +538,7 @@ document.getElementById('editSchoolYear').addEventListener('change', function ()
 
 // Fetch Sections via AJAX
 function fetchSections(selectElement, courseId, schoolYearId, selectedSectionId) {
-    fetch(`/capstone-admin/admin/student_actions.php?action=get_sections&course_id=${courseId}&school_year_id=${schoolYearId}`)
+    fetch(`./student_actions.php?action=get_sections&course_id=${courseId}&school_year_id=${schoolYearId}`)
         .then(response => response.json())
         .then(data => {
             selectElement.innerHTML = '<option value="">Select Section</option>';
@@ -569,14 +579,28 @@ document.querySelectorAll('.edit-user-btn').forEach(button => {
         modalBody.appendChild(spinner);
 
         const id = this.dataset.id;
-        fetch('/capstone-admin/admin/student_actions.php?action=get&id=' + id)
-            .then(response => response.json())
+        fetch('./student_actions.php?action=get&id=' + id)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.statusText);
+                }
+                return response.text().then(text => {
+                    console.log('Raw response text:', text);
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        throw new Error('Invalid JSON: ' + e.message + '\nResponse: ' + text);
+                    }
+                });
+            })
             .then(data => {
+                console.log('Parsed JSON:', data);
                 if (data.status === 200) {
                     const user = data.data;
                     document.getElementById('editId').value = user.id;
                     document.getElementById('editStudentId').value = user.studentid;
                     document.getElementById('editFirstName').value = user.firstname;
+                    document.getElementById('editMiddleName').value = user.middlename || '';
                     document.getElementById('editLastName').value = user.lastname;
                     document.getElementById('editEmail').value = user.email;
                     document.getElementById('editSchoolYear').value = user.year_id || '';
@@ -586,7 +610,6 @@ document.querySelectorAll('.edit-user-btn').forEach(button => {
                     document.getElementById('editIsBan').value = user.is_ban;
                     document.getElementById('editTerms').checked = user.terms == 1;
 
-                    // Show/hide fields based on course and year level
                     if (user.course_id) {
                         yearLevelGroup.style.display = 'block';
                         if (user.year_level && user.course_id && user.year_id) {
@@ -616,6 +639,7 @@ document.querySelectorAll('.edit-user-btn').forEach(button => {
     });
 });
 
+<?php if ($_SESSION['role'] === 'admin'): ?>
 // Populate Delete User Modal
 document.querySelectorAll('.delete-user-btn').forEach(button => {
     button.addEventListener('click', function () {
@@ -623,6 +647,7 @@ document.querySelectorAll('.delete-user-btn').forEach(button => {
         document.getElementById('deleteId').value = id;
     });
 });
+<?php endif; ?>
 </script>
 
 <?php include('includes/footer.php'); ?>

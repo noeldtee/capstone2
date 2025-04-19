@@ -63,7 +63,7 @@ $offset = ($page - 1) * $requests_per_page;
 
 // Fetch paginated requests
 $query = "SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
-                 r.price, r.status, r.requested_date, r.archived, r.file_path, r.remarks, r.rejection_reason 
+                 r.unit_price, r.status, r.requested_date, r.archived, r.file_path, r.remarks, r.rejection_reason 
           FROM requests r 
           JOIN users u ON r.user_id = u.id 
           $where_sql 
@@ -84,7 +84,7 @@ while ($row = $result->fetch_assoc()) {
 
 // Fetch archived requests for the modal
 $archived_query = "SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
-                          r.price, r.status, r.requested_date, r.file_path, r.remarks, r.rejection_reason 
+                          r.unit_price, r.status, r.requested_date, r.file_path, r.remarks, r.rejection_reason 
                    FROM requests r 
                    JOIN users u ON r.user_id = u.id 
                    WHERE r.archived = 1 
@@ -113,7 +113,7 @@ while ($row = $archived_result->fetch_assoc()) {
         <small>View and manage the history of all document requests, including rejected ones.</small>
     </div>
     <div class="page-content">
-        <!-- Filter Form (Matches action_logs.php style) -->
+        <!-- Filter Form -->
         <div class="mb-3">
             <form method="GET" action="request_logs.php" class="row g-3" id="filterForm">
                 <div class="col-md-3">
@@ -151,7 +151,9 @@ while ($row = $archived_result->fetch_assoc()) {
                 </div>
                 <div class="bulk-actions">
                     <button type="button" class="btn btn-warning btn-sm" onclick="bulkArchive()">Archive Selected</button>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="bulkDelete()">Delete Selected</button>
+                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="bulkDelete()">Delete Selected</button>
+                    <?php endif; ?>
                 </div>
             </div>
             <form id="bulk-form">
@@ -180,7 +182,7 @@ while ($row = $archived_result->fetch_assoc()) {
                                     <td><?php echo htmlspecialchars($request['id']); ?></td>
                                     <td><?php echo htmlspecialchars($request['document_type']); ?></td>
                                     <td><?php echo htmlspecialchars($request['student_name']); ?></td>
-                                    <td>₱<?php echo number_format($request['price'], 2); ?></td>
+                                    <td>₱<?php echo number_format($request['unit_price'], 2); ?></td>
                                     <td><?php echo date('F j, Y', strtotime($request['requested_date'])); ?></td>
                                     <td>
                                         <span class="badge <?php 
@@ -198,7 +200,9 @@ while ($row = $archived_result->fetch_assoc()) {
                                     <td>
                                         <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
                                         <button type="button" class="btn btn-warning btn-sm archive-btn" data-id="<?php echo $request['id']; ?>">Archive</button>
-                                        <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>">Delete</button>
+                                        <?php if ($_SESSION['role'] === 'admin'): ?>
+                                            <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>">Delete</button>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -281,35 +285,38 @@ while ($row = $archived_result->fetch_assoc()) {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($archived_requests as $request): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($request['id']); ?></td>
-                                <td><?php echo htmlspecialchars($request['document_type']); ?></td>
-                                <td><?php echo htmlspecialchars($request['student_name']); ?></td>
-                                <td>₱<?php echo number_format($request['price'], 2); ?></td>
-                                <td><?php echo date('F j, Y', strtotime($request['requested_date'])); ?></td>
-                                <td>
-                                    <span class="badge <?php 
-                                        switch (strtolower($request['status'])) {
-                                            case 'pending': echo 'bg-warning'; break;
-                                            case 'in process': echo 'bg-info'; break;
-                                            case 'ready to pickup': echo 'bg-success'; break;
-                                            case 'completed': echo 'bg-primary'; break;
-                                            case 'rejected': echo 'bg-danger'; break;
-                                        }
-                                    ?>">
-                                        <?php echo htmlspecialchars($request['status']); ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
-                                    <button type="button" class="btn btn-success btn-sm retrieve-btn" data-id="<?php echo $request['id']; ?>">Retrieve</button>
-                                    <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>">Delete</button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
                         <?php if (empty($archived_requests)): ?>
                             <tr><td colspan="7" class="text-center">No archived requests found.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($archived_requests as $request): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($request['id']); ?></td>
+                                    <td><?php echo htmlspecialchars($request['document_type']); ?></td>
+                                    <td><?php echo htmlspecialchars($request['student_name']); ?></td>
+                                    <td>₱<?php echo number_format($request['unit_price'], 2); ?></td>
+                                    <td><?php echo date('F j, Y', strtotime($request['requested_date'])); ?></td>
+                                    <td>
+                                        <span class="badge <?php 
+                                            switch (strtolower($request['status'])) {
+                                                case 'pending': echo 'bg-warning'; break;
+                                                case 'in process': echo 'bg-info'; break;
+                                                case 'ready to pickup': echo 'bg-success'; break;
+                                                case 'completed': echo 'bg-primary'; break;
+                                                case 'rejected': echo 'bg-danger'; break;
+                                            }
+                                        ?>">
+                                            <?php echo htmlspecialchars($request['status']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
+                                        <button type="button" class="btn btn-success btn-sm retrieve-btn" data-id="<?php echo $request['id']; ?>">Retrieve</button>
+                                        <?php if ($_SESSION['role'] === 'admin'): ?>
+                                            <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>">Delete</button>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -382,6 +389,7 @@ function bulkArchive() {
     }
 }
 
+<?php if ($_SESSION['role'] === 'admin'): ?>
 // Bulk delete selected requests
 function bulkDelete() {
     const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
@@ -412,6 +420,7 @@ function bulkDelete() {
         });
     }
 }
+<?php endif; ?>
 
 // Individual archive function
 document.querySelectorAll('.archive-btn').forEach(button => {
@@ -441,6 +450,7 @@ document.querySelectorAll('.archive-btn').forEach(button => {
     });
 });
 
+<?php if ($_SESSION['role'] === 'admin'): ?>
 // Individual delete function
 document.querySelectorAll('.delete-btn').forEach(button => {
     button.addEventListener('click', function() {
@@ -468,12 +478,13 @@ document.querySelectorAll('.delete-btn').forEach(button => {
         }
     });
 });
+<?php endif; ?>
 
 // Retrieve (unarchive) a request
 document.querySelectorAll('.retrieve-btn').forEach(button => {
     button.addEventListener('click', function() {
         const requestId = this.dataset.id;
-        if (confirm(`Retrieve request ID: ${requestId}?`)) {
+        if (confirm(`Retrieve request ID: ${requestId} from archive?`)) {
             showProcessingMessage('Retrieving request... Please wait.');
             fetch('request_actions.php', {
                 method: 'POST',
@@ -509,24 +520,22 @@ document.querySelectorAll('.view-btn').forEach(button => {
                     document.getElementById('modal-id').textContent = request.id;
                     document.getElementById('modal-document-type').textContent = request.document_type;
                     document.getElementById('modal-student-name').textContent = request.student_name;
-                    document.getElementById('modal-price').textContent = '₱' + parseFloat(request.price).toFixed(2);
+                    document.getElementById('modal-price').textContent = '₱' + parseFloat(request.unit_price).toFixed(2);
                     document.getElementById('modal-requested-date').textContent = new Date(request.requested_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
                     document.getElementById('modal-status').textContent = request.status;
                     document.getElementById('modal-remarks').textContent = request.remarks || 'N/A';
-                    document.getElementById('modal-rejection-reason').textContent = request.rejection_reason || 'N/A';
                     const fileSpan = document.getElementById('modal-file');
                     if (request.file_path) {
                         fileSpan.innerHTML = `<a href="../${request.file_path}" target="_blank" download>Download File</a>`;
                     } else {
                         fileSpan.textContent = 'No file uploaded';
                     }
+                    document.getElementById('modal-rejection-reason').textContent = request.rejection_reason || 'N/A';
                 } else {
                     alert('Error: ' + data.message);
                 }
             })
-            .catch(error => {
-                alert('Failed to load request details: ' + error.message);
-            });
+            .catch(error => alert('Failed to load request details: ' + error.message));
     });
 });
 </script>

@@ -1,9 +1,9 @@
 <?php
 require $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/config/function.php';
 
-// Restrict to authenticated students/alumni
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin'])) {
-    redirect('../index.php', 'Please log in as a admin to access this page.', 'warning');
+// Restrict to authenticated admin or registrar
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
+    redirect('../index.php', 'Please log in as an admin or registrar to access this page.', 'warning');
     exit();
 }
 ?>

@@ -55,7 +55,7 @@ $offset = ($page - 1) * $requests_per_page;
 
 // Fetch paginated requests
 $query = "SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
-                 r.price, r.status, r.requested_date, r.file_path, r.remarks 
+                 r.unit_price, r.status, r.requested_date, r.file_path, r.remarks 
           FROM requests r 
           JOIN users u ON r.user_id = u.id 
           $where_sql 
@@ -161,7 +161,7 @@ while ($row = $result->fetch_assoc()) {
                                     <td><?php echo htmlspecialchars($request['id']); ?></td>
                                     <td><?php echo htmlspecialchars($request['document_type']); ?></td>
                                     <td><?php echo htmlspecialchars($request['student_name']); ?></td>
-                                    <td>₱<?php echo number_format($request['price'], 2); ?></td>
+                                    <td>₱<?php echo number_format($request['unit_price'], 2); ?></td>
                                     <td><?php echo date('F j, Y', strtotime($request['requested_date'])); ?></td>
                                     <td>
                                         <span class="badge <?php 
@@ -237,7 +237,7 @@ while ($row = $result->fetch_assoc()) {
                 <p><strong>Uploaded File:</strong> <span id="modal-file"></span></p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button Mississauga: <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -528,7 +528,7 @@ document.querySelectorAll('.view-btn').forEach(button => {
                     document.getElementById('modal-id').textContent = request.id;
                     document.getElementById('modal-document-type').textContent = request.document_type;
                     document.getElementById('modal-student-name').textContent = request.student_name;
-                    document.getElementById('modal-price').textContent = '₱' + parseFloat(request.price).toFixed(2);
+                    document.getElementById('modal-price').textContent = '₱' + parseFloat(request.unit_price).toFixed(2);
                     document.getElementById('modal-requested-date').textContent = new Date(request.requested_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
                     document.getElementById('modal-status').textContent = request.status;
                     document.getElementById('modal-remarks').textContent = request.remarks || 'N/A';

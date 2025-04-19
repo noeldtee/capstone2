@@ -7,8 +7,8 @@ ini_set('error_log', 'C:/xampp/htdocs/capstone-admin/error.log');
 
 require '../config/function.php';
 
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    redirect('../index.php', 'You must be logged in as an admin to perform this action.', 'danger');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
+    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
     exit();
 }
 
@@ -16,12 +16,16 @@ $action = isset($_POST['action']) ? $_POST['action'] : (isset($_GET['action']) ?
 
 switch ($action) {
     case 'add':
-        if (empty($_POST['year']) || !isset($_POST['is_active'])) {
+        if (empty($_POST['year']) || empty($_POST['status'])) {
             redirect('sections.php', 'All fields are required.', 'danger');
         }
 
         $year = validate($_POST['year']);
-        $is_active = (int)validate($_POST['is_active']);
+        $status = validate($_POST['status']);
+
+        if (!in_array($status, ['Current', 'Past', 'Inactive'])) {
+            redirect('sections.php', 'Invalid status.', 'danger');
+        }
 
         if (!preg_match('/^\d{4}-\d{4}$/', $year)) {
             redirect('sections.php', 'Invalid school year format. Use YYYY-YYYY (e.g., 2024-2025).', 'danger');
@@ -33,9 +37,17 @@ switch ($action) {
         if ($stmt->get_result()->num_rows > 0) {
             redirect('sections.php', 'School year already exists.', 'danger');
         }
+        $stmt->close();
 
-        $stmt = $conn->prepare("INSERT INTO school_years (year, is_active, created_at) VALUES (?, ?, NOW())");
-        $stmt->bind_param("si", $year, $is_active);
+        // If setting to Current, update the previous Current school year to Past
+        if ($status === 'Current') {
+            $stmt = $conn->prepare("UPDATE school_years SET status = 'Past' WHERE status = 'Current'");
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        $stmt = $conn->prepare("INSERT INTO school_years (year, status, created_at) VALUES (?, ?, NOW())");
+        $stmt->bind_param("ss", $year, $status);
         if ($stmt->execute()) {
             $school_year_id = $stmt->insert_id;
             logAction($conn, 'School Year Added', "School Year ID: $school_year_id", "Year: $year");
@@ -46,13 +58,17 @@ switch ($action) {
         break;
 
     case 'edit':
-        if (empty($_POST['id']) || empty($_POST['year']) || !isset($_POST['is_active'])) {
+        if (empty($_POST['id']) || empty($_POST['year']) || empty($_POST['status'])) {
             redirect('sections.php', 'All fields are required.', 'danger');
         }
 
         $id = (int)validate($_POST['id']);
         $year = validate($_POST['year']);
-        $is_active = (int)validate($_POST['is_active']);
+        $status = validate($_POST['status']);
+
+        if (!in_array($status, ['Current', 'Past', 'Inactive'])) {
+            redirect('sections.php', 'Invalid status.', 'danger');
+        }
 
         if (!preg_match('/^\d{4}-\d{4}$/', $year)) {
             redirect('sections.php', 'Invalid school year format. Use YYYY-YYYY (e.g., 2024-2025).', 'danger');
@@ -64,9 +80,25 @@ switch ($action) {
         if ($stmt->get_result()->num_rows > 0) {
             redirect('sections.php', 'School year already exists.', 'danger');
         }
+        $stmt->close();
 
-        $stmt = $conn->prepare("UPDATE school_years SET year = ?, is_active = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->bind_param("sii", $year, $is_active, $id);
+        // Fetch the current status of this school year
+        $stmt = $conn->prepare("SELECT status FROM school_years WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $current_status = $result->fetch_assoc()['status'];
+        $stmt->close();
+
+        // If setting to Current, update the previous Current school year to Past
+        if ($status === 'Current' && $current_status !== 'Current') {
+            $stmt = $conn->prepare("UPDATE school_years SET status = 'Past' WHERE status = 'Current'");
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        $stmt = $conn->prepare("UPDATE school_years SET year = ?, status = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("ssi", $year, $status, $id);
         if ($stmt->execute()) {
             logAction($conn, 'School Year Edited', "School Year ID: $id", "Year: $year");
             redirect('sections.php', 'School year updated successfully.', 'success');

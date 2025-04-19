@@ -4,203 +4,205 @@ ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 ob_start();
 
+// Include necessary files
 require '../config/function.php';
-session_start();
 
-if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
-    $response = ['status' => 'error', 'message' => 'User not logged in. Please log in to perform this action.'];
-    echo json_encode($response);
-    exit;
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
+// Check if user is logged in
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
+    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+    exit();
+}
+
+// Set content type header
 header('Content-Type: application/json');
+
+// Get the action parameter
 $action = isset($_POST['action']) ? $_POST['action'] : (isset($_GET['action']) ? $_GET['action'] : '');
 
+// Initialize response
 $response = ['status' => 'error', 'message' => 'Invalid action.'];
 
 try {
+    // Check database connection
+    if (!$conn) {
+        throw new Exception('Database connection is not established.');
+    }
+
     switch ($action) {
         case 'archive':
-            $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-            if ($id > 0) {
-                $stmt = $conn->prepare("SELECT status FROM requests WHERE id = ?");
-                $stmt->bind_param("i", $id);
-                $stmt->execute();
-                $request = $stmt->get_result()->fetch_assoc();
-
-                if ($request) {
-                    $stmt = $conn->prepare("UPDATE requests SET archived = 1, updated_at = NOW() WHERE id = ?");
-                    $stmt->bind_param("i", $id);
-                    if ($stmt->execute()) {
-                        logAction($conn, 'Archive Request', "Request ID: $id", "Status: {$request['status']}");
-                        $_SESSION['message'] = "Request ID $id archived successfully.";
-                        $_SESSION['message_type'] = "success";
-                        $response = ['status' => 'success', 'message' => $_SESSION['message']];
-                    } else {
-                        throw new Exception("Failed to archive request: " . $stmt->error);
-                    }
-                } else {
-                    $response['message'] = 'Request not found.';
-                }
+            $id = (int)$_POST['id'];
+            $stmt = $conn->prepare("UPDATE requests SET archived = 1, updated_at = NOW() WHERE id = ?");
+            $stmt->bind_param("i", $id);
+            if ($stmt->execute() && $stmt->affected_rows > 0) {
+                logAction($conn, 'Archive Request', "Request ID: $id", "Request archived");
+                $_SESSION['message'] = "Request ID $id archived successfully.";
+                $_SESSION['message_type'] = "success";
+                $response = ['status' => 'success', 'message' => $_SESSION['message']];
             } else {
-                $response['message'] = 'Invalid request ID.';
+                $response = ['status' => 'error', 'message' => 'Failed to archive request or request not found.'];
             }
-            break;
-
-        case 'retrieve':
-            $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-            if ($id > 0) {
-                $stmt = $conn->prepare("SELECT status FROM requests WHERE id = ?");
-                $stmt->bind_param("i", $id);
-                $stmt->execute();
-                $request = $stmt->get_result()->fetch_assoc();
-
-                if ($request) {
-                    $stmt = $conn->prepare("UPDATE requests SET archived = 0, updated_at = NOW() WHERE id = ?");
-                    $stmt->bind_param("i", $id);
-                    if ($stmt->execute()) {
-                        logAction($conn, 'Retrieve Request', "Request ID: $id", "Status: {$request['status']}");
-                        $_SESSION['message'] = "Request ID $id retrieved successfully.";
-                        $_SESSION['message_type'] = "success";
-                        $response = ['status' => 'success', 'message' => $_SESSION['message']];
-                    } else {
-                        throw new Exception("Failed to retrieve request: " . $stmt->error);
-                    }
-                } else {
-                    $response['message'] = 'Request not found.';
-                }
-            } else {
-                $response['message'] = 'Invalid request ID.';
-            }
-            break;
-
-        case 'delete':
-            $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-            if ($id > 0) {
-                $stmt = $conn->prepare("SELECT status, file_path FROM requests WHERE id = ?");
-                $stmt->bind_param("i", $id);
-                $stmt->execute();
-                $request = $stmt->get_result()->fetch_assoc();
-
-                if ($request) {
-                    if ($request['file_path'] && file_exists("../" . $request['file_path'])) {
-                        if (!unlink("../" . $request['file_path'])) {
-                            error_log("Failed to delete file for request ID $id: ../{$request['file_path']}");
-                        }
-                    }
-                    $stmt = $conn->prepare("DELETE FROM requests WHERE id = ?");
-                    $stmt->bind_param("i", $id);
-                    if ($stmt->execute()) {
-                        logAction($conn, 'Delete Request', "Request ID: $id", "Status: {$request['status']}");
-                        $_SESSION['message'] = "Request ID $id deleted successfully.";
-                        $_SESSION['message_type'] = "success";
-                        $response = ['status' => 'success', 'message' => $_SESSION['message']];
-                    } else {
-                        throw new Exception("Failed to delete request: " . $stmt->error);
-                    }
-                } else {
-                    $response['message'] = 'Request not found.';
-                }
-            } else {
-                $response['message'] = 'Invalid request ID.';
-            }
+            $stmt->close();
             break;
 
         case 'bulk_archive':
-            $ids = isset($_POST['ids']) ? explode(',', $_POST['ids']) : [];
-            $ids = array_filter($ids, 'is_numeric');
+            $ids = array_filter(explode(',', $_POST['ids']), 'is_numeric');
             $ids = array_map('intval', $ids);
-
-            if (!empty($ids)) {
-                $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                $stmt = $conn->prepare("UPDATE requests SET archived = 1, updated_at = NOW() WHERE id IN ($placeholders)");
-                $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
-                if ($stmt->execute()) {
+            if (empty($ids)) {
+                $response = ['status' => 'error', 'message' => 'No valid requests selected.'];
+                break;
+            }
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = $conn->prepare("UPDATE requests SET archived = 1, updated_at = NOW() WHERE id IN ($placeholders)");
+            $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
+            if ($stmt->execute()) {
+                $affected = $stmt->affected_rows;
+                if ($affected > 0) {
                     $request_ids = implode(', ', $ids);
-                    logAction($conn, 'Bulk Archive Requests', "Count: " . count($ids), "Request IDs: $request_ids");
-                    $_SESSION['message'] = count($ids) . " request(s) archived successfully.";
+                    logAction($conn, 'Bulk Archive Requests', "Count: $affected", "Request IDs: $request_ids");
+                    $_SESSION['message'] = "$affected request(s) archived successfully.";
                     $_SESSION['message_type'] = "success";
                     $response = ['status' => 'success', 'message' => $_SESSION['message']];
                 } else {
-                    throw new Exception("Failed to bulk archive requests: " . $stmt->error);
+                    $response = ['status' => 'error', 'message' => 'No requests were archived.'];
                 }
             } else {
-                $response['message'] = 'No valid requests selected.';
+                throw new Exception("Failed to bulk archive requests: " . $stmt->error);
             }
+            $stmt->close();
+            break;
+
+        case 'retrieve':
+            $id = (int)$_POST['id'];
+            $stmt = $conn->prepare("UPDATE requests SET archived = 0, updated_at = NOW() WHERE id = ?");
+            $stmt->bind_param("i", $id);
+            if ($stmt->execute() && $stmt->affected_rows > 0) {
+                logAction($conn, 'Retrieve Request', "Request ID: $id", "Request retrieved from archive");
+                $_SESSION['message'] = "Request ID $id retrieved successfully.";
+                $_SESSION['message_type'] = "success";
+                $response = ['status' => 'success', 'message' => $_SESSION['message']];
+            } else {
+                $response = ['status' => 'error', 'message' => 'Failed to retrieve request or request not found.'];
+            }
+            $stmt->close();
+            break;
+
+        case 'delete':
+            if ($_SESSION['role'] !== 'admin') {
+                $response = ['status' => 'error', 'message' => 'Only admins can delete requests.'];
+                break;
+            }
+            $id = (int)$_POST['id'];
+            $stmt = $conn->prepare("SELECT file_path FROM requests WHERE id = ?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+                $file_path = $row['file_path'];
+
+                $stmt = $conn->prepare("DELETE FROM requests WHERE id = ?");
+                $stmt->bind_param("i", $id);
+                if ($stmt->execute() && $stmt->affected_rows > 0) {
+                    if ($file_path && file_exists("../$file_path")) {
+                        unlink("../$file_path");
+                    }
+                    logAction($conn, 'Delete Request', "Request ID: $id", "Request deleted");
+                    $_SESSION['message'] = "Request ID $id deleted successfully.";
+                    $_SESSION['message_type'] = "success";
+                    $response = ['status' => 'success', 'message' => $_SESSION['message']];
+                } else {
+                    $response = ['status' => 'error', 'message' => 'Failed to delete request.'];
+                }
+            } else {
+                $response = ['status' => 'error', 'message' => 'Request not found.'];
+            }
+            $stmt->close();
             break;
 
         case 'bulk_delete':
-            $ids = isset($_POST['ids']) ? explode(',', $_POST['ids']) : [];
-            $ids = array_filter($ids, 'is_numeric');
+            if ($_SESSION['role'] !== 'admin') {
+                $response = ['status' => 'error', 'message' => 'Only admins can delete requests.'];
+                break;
+            }
+            $ids = array_filter(explode(',', $_POST['ids']), 'is_numeric');
             $ids = array_map('intval', $ids);
+            if (empty($ids)) {
+                $response = ['status' => 'error', 'message' => 'No valid requests selected.'];
+                break;
+            }
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = $conn->prepare("SELECT id, file_path FROM requests WHERE id IN ($placeholders)");
+            $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $files_to_delete = [];
+            while ($row = $result->fetch_assoc()) {
+                if ($row['file_path']) {
+                    $files_to_delete[$row['id']] = $row['file_path'];
+                }
+            }
 
-            if (!empty($ids)) {
-                $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                $stmt = $conn->prepare("SELECT status, file_path FROM requests WHERE id IN ($placeholders)");
-                $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
-                $stmt->execute();
-                $requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-                foreach ($requests as $request) {
-                    if ($request['file_path'] && file_exists("../" . $request['file_path'])) {
-                        if (!unlink("../" . $request['file_path'])) {
-                            error_log("Failed to delete file for request ID: ../{$request['file_path']}");
+            $stmt = $conn->prepare("DELETE FROM requests WHERE id IN ($placeholders)");
+            $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
+            if ($stmt->execute()) {
+                $affected = $stmt->affected_rows;
+                if ($affected > 0) {
+                    foreach ($files_to_delete as $file_path) {
+                        if ($file_path && file_exists("../$file_path")) {
+                            unlink("../$file_path");
                         }
                     }
-                }
-
-                $stmt = $conn->prepare("DELETE FROM requests WHERE id IN ($placeholders)");
-                $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
-                if ($stmt->execute()) {
                     $request_ids = implode(', ', $ids);
-                    logAction($conn, 'Bulk Delete Requests', "Count: " . count($ids), "Request IDs: $request_ids");
-                    $_SESSION['message'] = count($ids) . " request(s) deleted successfully.";
+                    logAction($conn, 'Bulk Delete Requests', "Count: $affected", "Request IDs: $request_ids");
+                    $_SESSION['message'] = "$affected request(s) deleted successfully.";
                     $_SESSION['message_type'] = "success";
                     $response = ['status' => 'success', 'message' => $_SESSION['message']];
                 } else {
-                    throw new Exception("Failed to bulk delete requests: " . $stmt->error);
+                    $response = ['status' => 'error', 'message' => 'No requests were deleted.'];
                 }
             } else {
-                $response['message'] = 'No valid requests selected.';
+                throw new Exception("Failed to bulk delete requests: " . $stmt->error);
             }
+            $stmt->close();
             break;
 
         case 'get':
-            $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-            if ($id > 0) {
-                $stmt = $conn->prepare("SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
-                                               r.price, r.status, r.requested_date, r.file_path, r.remarks, r.rejection_reason 
-                                        FROM requests r 
-                                        JOIN users u ON r.user_id = u.id 
-                                        WHERE r.id = ?");
-                $stmt->bind_param("i", $id);
-                $stmt->execute();
-                $result = $stmt->get_result();
-                if ($result->num_rows > 0) {
-                    $response = [
-                        'status' => 'success',
-                        'message' => 'Request fetched successfully.',
-                        'data' => $result->fetch_assoc()
-                    ];
-                } else {
-                    $response['message'] = 'Request not found.';
-                }
+            $id = (int)$_GET['id'];
+            $stmt = $conn->prepare("SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
+                                           r.unit_price, r.status, r.requested_date, r.file_path, r.remarks, r.rejection_reason 
+                                    FROM requests r 
+                                    JOIN users u ON r.user_id = u.id 
+                                    WHERE r.id = ?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($result->num_rows > 0) {
+                $response = ['status' => 'success', 'data' => $result->fetch_assoc()];
             } else {
-                $response['message'] = 'Invalid request ID.';
+                $response = ['status' => 'error', 'message' => 'Request not found.'];
             }
+            $stmt->close();
             break;
 
         default:
-            $response['message'] = 'Invalid action.';
+            $response = ['status' => 'error', 'message' => 'Invalid action.'];
             break;
     }
 } catch (Exception $e) {
     error_log("Error in request_actions.php: " . $e->getMessage());
-    $response['message'] = 'An error occurred: ' . $e->getMessage();
+    $response = ['status' => 'error', 'message' => 'An error occurred: ' . $e->getMessage()];
     $_SESSION['message'] = $response['message'];
     $_SESSION['message_type'] = 'danger';
 }
 
+// Clean output buffer and send JSON response
 ob_end_clean();
+header('Content-Type: application/json');
 echo json_encode($response);
+exit;
 ?>

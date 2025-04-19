@@ -1,65 +1,61 @@
 <?php
 require 'config/function.php';
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
+$action = isset($_GET['action']) ? $_GET['action'] : '';
 header('Content-Type: application/json');
-
-$action = $_GET['action'] ?? '';
 
 switch ($action) {
     case 'courses':
+        // Fetch only active courses
         $stmt = $conn->prepare("SELECT id, name FROM courses WHERE is_active = 1 ORDER BY name ASC");
-        if (!$stmt) {
-            echo json_encode(['status' => 'error', 'message' => 'Query preparation failed: ' . $conn->error]);
-            exit;
-        }
         $stmt->execute();
         $result = $stmt->get_result();
         $courses = [];
         while ($row = $result->fetch_assoc()) {
             $courses[] = $row;
         }
-        if (empty($courses)) {
-            echo json_encode(['status' => 'success', 'courses' => [], 'message' => 'No active courses found']);
-        } else {
-            echo json_encode(['status' => 'success', 'courses' => $courses]);
-        }
         $stmt->close();
+
+        if ($result->num_rows > 0) {
+            echo json_encode(['status' => 'success', 'courses' => $courses]);
+        } else {
+            echo json_encode(['status' => 'success', 'courses' => [], 'message' => 'No active courses found.']);
+        }
         break;
 
     case 'sections':
-        $course_id = (int)($_GET['course_id'] ?? 0);
-        $year_level = $_GET['year_level'] ?? '';
-        if ($course_id <= 0 || empty($year_level)) {
-            echo json_encode(['status' => 'error', 'message' => 'Invalid course ID or year level']);
+        $school_year_id = isset($_GET['school_year_id']) ? (int)$_GET['school_year_id'] : 0;
+        $course_id = isset($_GET['course_id']) ? (int)$_GET['course_id'] : 0;
+        $year_level = isset($_GET['year_level']) ? validate($_GET['year_level']) : '';
+        $school_year_status = isset($_GET['school_year_status']) ? validate($_GET['school_year_status']) : '';
+
+        if (!$school_year_id || !$course_id || !$year_level || !$school_year_status) {
+            echo json_encode(['status' => 'error', 'message' => 'Missing required parameters.']);
             exit;
         }
 
-        $stmt = $conn->prepare("SELECT id, section FROM sections WHERE course_id = ? AND year_level = ? AND is_active = 1 ORDER BY section ASC");
-        if (!$stmt) {
-            echo json_encode(['status' => 'error', 'message' => 'Query preparation failed: ' . $conn->error]);
-            exit;
-        }
-        $stmt->bind_param("is", $course_id, $year_level);
+        // Fetch sections where status matches the school year's status
+        $stmt = $conn->prepare("SELECT id, section FROM sections WHERE school_year_id = ? AND course_id = ? AND year_level = ? AND status = ? ORDER BY section ASC");
+        $stmt->bind_param("iiss", $school_year_id, $course_id, $year_level, $school_year_status);
         $stmt->execute();
         $result = $stmt->get_result();
         $sections = [];
         while ($row = $result->fetch_assoc()) {
             $sections[] = $row;
         }
-        if (empty($sections)) {
-            echo json_encode(['status' => 'success', 'sections' => [], 'message' => 'No active sections found']);
-        } else {
-            echo json_encode(['status' => 'success', 'sections' => $sections]);
-        }
         $stmt->close();
+
+        if ($result->num_rows > 0) {
+            echo json_encode(['status' => 'success', 'sections' => $sections]);
+        } else {
+            echo json_encode(['status' => 'success', 'sections' => [], 'message' => 'No sections found for the selected criteria.']);
+        }
         break;
 
     default:
-        echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
+        echo json_encode(['status' => 'error', 'message' => 'Invalid action.']);
         break;
 }
 
 $conn->close();
+?>

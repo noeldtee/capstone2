@@ -1,8 +1,8 @@
 <?php
-require $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/config/function.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/config/function.php';
 
-// Restrict to authenticated students/alumni
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['student'])) {
+// Restrict to authenticated students or alumni
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['student', 'alumni'])) {
     redirect('../index.php', 'Please log in as a student or alumni to access this page.', 'warning');
     exit();
 }

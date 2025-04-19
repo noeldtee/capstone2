@@ -7,9 +7,8 @@ ini_set('error_log', 'C:/xampp/htdocs/capstone-admin/error.log');
 
 require '../config/function.php';
 
-// Restrict to admins
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    redirect('../index.php', 'You must be logged in as an admin to perform this action.', 'danger');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
+    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
     exit();
 }
 
@@ -19,7 +18,7 @@ switch ($action) {
     case 'add':
         if (
             empty($_POST['school_year_id']) || empty($_POST['course_id']) || empty($_POST['year_level']) ||
-            empty($_POST['section']) || !isset($_POST['is_active'])
+            empty($_POST['section'])
         ) {
             redirect('sections.php', 'All fields are required.', 'danger');
         }
@@ -28,15 +27,18 @@ switch ($action) {
         $course_id = (int)validate($_POST['course_id']);
         $year_level = validate($_POST['year_level']);
         $section = validate($_POST['section']);
-        $is_active = (int)validate($_POST['is_active']);
 
-        // Validate foreign keys
-        $stmt = $conn->prepare("SELECT id FROM school_years WHERE id = ?");
+        // Validate foreign keys and fetch school year status
+        $stmt = $conn->prepare("SELECT id, status FROM school_years WHERE id = ?");
         $stmt->bind_param("i", $school_year_id);
         $stmt->execute();
-        if ($stmt->get_result()->num_rows == 0) {
+        $result = $stmt->get_result();
+        if ($result->num_rows == 0) {
             redirect('sections.php', 'Invalid school year selected.', 'danger');
         }
+        $school_year = $result->fetch_assoc();
+        $status = $school_year['status']; // Now correctly fetched
+        $stmt->close();
 
         $stmt = $conn->prepare("SELECT id FROM courses WHERE id = ?");
         $stmt->bind_param("i", $course_id);
@@ -44,6 +46,7 @@ switch ($action) {
         if ($stmt->get_result()->num_rows == 0) {
             redirect('sections.php', 'Invalid course selected.', 'danger');
         }
+        $stmt->close();
 
         $valid_year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
         if (!in_array($year_level, $valid_year_levels)) {
@@ -56,9 +59,10 @@ switch ($action) {
         if ($stmt->get_result()->num_rows > 0) {
             redirect('sections.php', 'This section already exists.', 'danger');
         }
+        $stmt->close();
 
-        $stmt = $conn->prepare("INSERT INTO sections (school_year_id, course_id, year_level, section, is_active, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-        $stmt->bind_param("iissi", $school_year_id, $course_id, $year_level, $section, $is_active);
+        $stmt = $conn->prepare("INSERT INTO sections (school_year_id, course_id, year_level, section, status, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("iisss", $school_year_id, $course_id, $year_level, $section, $status);
         if ($stmt->execute()) {
             $section_id = $stmt->insert_id;
             logAction($conn, 'Section Added', "Section ID: $section_id", "School Year ID: $school_year_id, Course ID: $course_id, Year Level: $year_level, Section: $section");
@@ -71,7 +75,7 @@ switch ($action) {
     case 'edit':
         if (
             empty($_POST['id']) || empty($_POST['school_year_id']) || empty($_POST['course_id']) ||
-            empty($_POST['year_level']) || empty($_POST['section']) || !isset($_POST['is_active'])
+            empty($_POST['year_level']) || empty($_POST['section']) || empty($_POST['status'])
         ) {
             redirect('sections.php', 'All fields are required.', 'danger');
         }
@@ -81,7 +85,11 @@ switch ($action) {
         $course_id = (int)validate($_POST['course_id']);
         $year_level = validate($_POST['year_level']);
         $section = validate($_POST['section']);
-        $is_active = (int)validate($_POST['is_active']);
+        $status = validate($_POST['status']);
+
+        if (!in_array($status, ['Current', 'Past', 'Inactive'])) {
+            redirect('sections.php', 'Invalid status.', 'danger');
+        }
 
         $stmt = $conn->prepare("SELECT id FROM school_years WHERE id = ?");
         $stmt->bind_param("i", $school_year_id);
@@ -89,6 +97,7 @@ switch ($action) {
         if ($stmt->get_result()->num_rows == 0) {
             redirect('sections.php', 'Invalid school year selected.', 'danger');
         }
+        $stmt->close();
 
         $stmt = $conn->prepare("SELECT id FROM courses WHERE id = ?");
         $stmt->bind_param("i", $course_id);
@@ -96,6 +105,7 @@ switch ($action) {
         if ($stmt->get_result()->num_rows == 0) {
             redirect('sections.php', 'Invalid course selected.', 'danger');
         }
+        $stmt->close();
 
         $valid_year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
         if (!in_array($year_level, $valid_year_levels)) {
@@ -108,9 +118,10 @@ switch ($action) {
         if ($stmt->get_result()->num_rows > 0) {
             redirect('sections.php', 'This section already exists.', 'danger');
         }
+        $stmt->close();
 
-        $stmt = $conn->prepare("UPDATE sections SET school_year_id = ?, course_id = ?, year_level = ?, section = ?, is_active = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->bind_param("iissii", $school_year_id, $course_id, $year_level, $section, $is_active, $id);
+        $stmt = $conn->prepare("UPDATE sections SET school_year_id = ?, course_id = ?, year_level = ?, section = ?, status = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("iisssi", $school_year_id, $course_id, $year_level, $section, $status, $id);
         if ($stmt->execute()) {
             logAction($conn, 'Section Edited', "Section ID: $id", "School Year ID: $school_year_id, Course ID: $course_id, Year Level: $year_level, Section: $section");
             redirect('sections.php', 'Section updated successfully.', 'success');
@@ -176,3 +187,4 @@ switch ($action) {
 }
 
 $conn->close();
+?>

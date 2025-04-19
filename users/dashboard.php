@@ -2,12 +2,6 @@
 $page_title = "Student Dashboard";
 include('includes/header.php');
 
-// Ensure the user is a student
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
-    redirect('index.php', 'Please log in as a student to access the dashboard.', 'danger');
-    exit;
-}
-
 // Fetch student details
 $user_id = $_SESSION['user_id'];
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
@@ -49,7 +43,13 @@ $stmt->close();
 
 <link rel="stylesheet" href="../assets/css/user_dashboard.css">
 <main>
-    <?php alertMessage(); ?>
+    <?php if (isset($_SESSION['message'])): ?>
+        <div class="alert alert-<?php echo $_SESSION['message_type']; ?> alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x" style="z-index: 1050; margin-top: 20px;" role="alert">
+            <?php echo htmlspecialchars($_SESSION['message']); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
+    <?php endif; ?>
     <div class="page-header">
         <h1>Dashboard</h1>
         <small>Welcome back, <?= htmlspecialchars($user['firstname']); ?>! Here's an overview of your activity.</small>
@@ -108,7 +108,7 @@ $stmt->close();
                             <?php foreach ($data['recentRequests'] as $request): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($request['document_type']); ?></td>
-                                    <td>₱<?= htmlspecialchars($request['price']); ?></td>
+                                    <td>₱<?= htmlspecialchars(number_format($request['unit_price'], 2)); ?></td>
                                     <td><?= htmlspecialchars(date('Y-m-d', strtotime($request['requested_date']))); ?></td>
                                     <td>
                                         <span class="badge bg-<?= $request['status'] === 'Pending' ? 'warning' : ($request['status'] === 'Approved' ? 'success' : 'danger'); ?>">
@@ -135,8 +135,8 @@ $stmt->close();
                                             data-school_year="<?= htmlspecialchars($request['school_year'] ?? 'N/A'); ?>"
                                             data-document_type="<?= htmlspecialchars($request['document_type'] ?? ''); ?>"
                                             data-status="<?= htmlspecialchars($request['status'] ?? ''); ?>"
-                                            data-price="<?= htmlspecialchars($request['price'] ?? ''); ?>"
-                                            data-payment_status="N/A"
+                                            data-unit_price="<?= htmlspecialchars(number_format($request['unit_price'], 2)); ?>"
+                                            data-payment_status="<?= htmlspecialchars($request['payment_status'] ?? 'N/A'); ?>"
                                             data-remarks="<?= htmlspecialchars($request['remarks'] ?? ''); ?>"
                                             data-pickup_date="<?= htmlspecialchars($request['updated_at'] ? date('Y-m-d H:i:s', strtotime($request['updated_at'])) : 'N/A'); ?>">
                                             View Information
@@ -232,7 +232,7 @@ $stmt->close();
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Price</label>
-                        <input name="price" type="text" class="form-control" readonly>
+                        <input name="unit_price" type="text" class="form-control" readonly>
                     </div>
                 </div>
                 <div class="row g-3 mb-3">
@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalBody.querySelector('input[name="birthdate"]').value = button.getAttribute('data-birthdate') || 'N/A';
         modalBody.querySelector('input[name="document_type"]').value = button.getAttribute('data-document_type') || 'N/A';
         modalBody.querySelector('input[name="status"]').value = button.getAttribute('data-status') || 'N/A';
-        modalBody.querySelector('input[name="price"]').value = button.getAttribute('data-price') || 'N/A';
+        modalBody.querySelector('input[name="unit_price"]').value = button.getAttribute('data-unit_price') || 'N/A';
         modalBody.querySelector('input[name="payment_status"]').value = button.getAttribute('data-payment_status') || 'N/A';
         modalBody.querySelector('input[name="pickup_date"]').value = button.getAttribute('data-pickup_date') || 'N/A';
         modalBody.querySelector('textarea[name="remarks"]').value = button.getAttribute('data-remarks') || 'N/A';

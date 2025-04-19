@@ -7,8 +7,8 @@ ini_set('error_log', 'C:/xampp/htdocs/capstone-admin/error.log');
 
 require '../config/function.php';
 
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    redirect('../index.php', 'You must be logged in as an admin to perform this action.', 'danger');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
+    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
     exit();
 }
 
@@ -31,6 +31,7 @@ switch ($action) {
         if ($stmt->get_result()->num_rows > 0) {
             redirect('sections.php', 'Course code already exists.', 'danger');
         }
+        $stmt->close();
 
         $stmt = $conn->prepare("INSERT INTO courses (name, code, description, is_active, created_at) VALUES (?, ?, ?, ?, NOW())");
         $stmt->bind_param("sssi", $name, $code, $description, $is_active);
@@ -60,6 +61,7 @@ switch ($action) {
         if ($stmt->get_result()->num_rows > 0) {
             redirect('sections.php', 'Course code already exists.', 'danger');
         }
+        $stmt->close();
 
         $stmt = $conn->prepare("UPDATE courses SET name = ?, code = ?, description = ?, is_active = ?, updated_at = NOW() WHERE id = ?");
         $stmt->bind_param("sssii", $name, $code, $description, $is_active, $id);

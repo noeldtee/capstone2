@@ -26,7 +26,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="setting.php" class="<?php echo (isset($page_title) && $page_title === 'Settings') ? 'active' : ''; ?>">
+                    <a href="settings.php" class="<?php echo (isset($page_title) && $page_title === 'Settings') ? 'active' : ''; ?>">
                         <i class="fa-solid fa-clock-rotate-left"></i>
                         <small>Settings</small>
                     </a>

@@ -30,7 +30,7 @@ $total_ready_to_pickup = $stmt->get_result()->fetch_assoc()['total'];
 
 // Fetch the 10 most recent requests (most recent first)
 $stmt = $conn->prepare("SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
-                               r.price, r.status, r.requested_date 
+                               r.unit_price, r.status, r.requested_date 
                         FROM requests r 
                         JOIN users u ON r.user_id = u.id 
                         ORDER BY r.requested_date DESC 
@@ -44,6 +44,13 @@ while ($row = $result->fetch_assoc()) {
 ?>
 
 <link rel="stylesheet" href="../assets/css/admin_dashboard.css">
+<?php if (isset($_SESSION['message'])): ?>
+    <div class="alert alert-<?php echo $_SESSION['message_type']; ?> alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x" style="z-index: 1050; margin-top: 20px;" role="alert">
+        <?php echo htmlspecialchars($_SESSION['message']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
+<?php endif; ?>
 <main>
     <div class="page-header">
         <span>Dashboard</span><br>
@@ -127,7 +134,7 @@ while ($row = $result->fetch_assoc()) {
                                 <tr>
                                     <td><?php echo htmlspecialchars($request['document_type']); ?></td>
                                     <td><?php echo htmlspecialchars($request['student_name']); ?></td>
-                                    <td>₱<?php echo number_format($request['price'], 2); ?></td>
+                                    <td>₱<?php echo number_format($request['unit_price'], 2); ?></td>
                                     <td><?php echo date('F j, Y', strtotime($request['requested_date'])); ?></td>
                                     <td>
                                         <span class="badge <?php 
@@ -200,7 +207,7 @@ document.querySelectorAll('.view-btn').forEach(button => {
                     document.getElementById('modal-id').textContent = request.id;
                     document.getElementById('modal-document-type').textContent = request.document_type;
                     document.getElementById('modal-student-name').textContent = request.student_name;
-                    document.getElementById('modal-price').textContent = '₱' + parseFloat(request.price).toFixed(2);
+                    document.getElementById('modal-price').textContent = '₱' + parseFloat(request.unit_price).toFixed(2);
                     document.getElementById('modal-requested-date').textContent = new Date(request.requested_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
                     document.getElementById('modal-status').textContent = request.status;
                     document.getElementById('modal-remarks').textContent = request.remarks || 'N/A';

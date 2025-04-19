@@ -18,36 +18,61 @@ function clearAllNotifications() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: <?= $user_id ?? 'null'; ?> })
+        }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok: ' + response.statusText);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             document.getElementById('notificationList').innerHTML = '<li>No new notifications.</li>';
             document.getElementById('notificationCount').textContent = '0';
         } else {
-            alert('Failed to clear notifications.');
+            alert('Failed to clear notifications: ' + (data.message || 'Unknown error'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while clearing notifications.');
+        alert('An error occurred while clearing notifications: ' + error.message);
     });
 }
 
-// Handle search form submission
-function handleSearch(event) {
-    event.preventDefault();
-    const searchInput = document.getElementById('searchInput').value;
-    console.log('Search query:', searchInput);
-    // Implement search functionality here (e.g., redirect to a search results page)
-}
-
-// Clear search input and submit form
-function clearSearchAndSubmit() {
-    document.getElementById('searchInput').value = '';
-    document.querySelector('.search-form').submit();
+// Mark a single notification as read
+function markNotificationAsRead(notificationId) {
+    fetch('mark_notification.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `notification_id=${notificationId}`
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok: ' + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Remove the "Mark as Read" button
+            const notificationItem = document.querySelector(`li[data-notification-id="${notificationId}"]`);
+            const markReadBtn = notificationItem.querySelector('.mark-read-btn');
+            if (markReadBtn) {
+                markReadBtn.remove();
+            }
+            // Update the notification count
+            document.getElementById('notificationCount').textContent = data.unread_count;
+        } else {
+            alert('Failed to mark notification as read: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while marking the notification as read: ' + error.message);
+    });
 }
 
 // Close dropdown when clicking outside

@@ -25,10 +25,10 @@ if ($course_filter) {
     $param_types .= "i";
 }
 
-if ($status_filter !== '' && in_array($status_filter, ['0', '1'])) {
-    $where_clauses[] = "s.is_active = ?";
-    $params[] = (int)$status_filter;
-    $param_types .= "i";
+if ($status_filter !== '' && in_array($status_filter, ['Current', 'Past', 'Inactive'])) {
+    $where_clauses[] = "s.status = ?";
+    $params[] = $status_filter;
+    $param_types .= "s";
 }
 
 $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
@@ -132,8 +132,9 @@ if (!$stmt) {
                 <div class="col-md-2">
                     <select name="status" class="form-select form-select-sm">
                         <option value="">All Statuses</option>
-                        <option value="1" <?php echo $status_filter === '1' ? 'selected' : ''; ?>>Active</option>
-                        <option value="0" <?php echo $status_filter === '0' ? 'selected' : ''; ?>>Inactive</option>
+                        <option value="Current" <?php echo $status_filter === 'Current' ? 'selected' : ''; ?>>Current</option>
+                        <option value="Past" <?php echo $status_filter === 'Past' ? 'selected' : ''; ?>>Past</option>
+                        <option value="Inactive" <?php echo $status_filter === 'Inactive' ? 'selected' : ''; ?>>Inactive</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -173,18 +174,22 @@ if (!$stmt) {
                                 <td><?php echo htmlspecialchars($section['year_level']); ?></td>
                                 <td><?php echo htmlspecialchars($section['section']); ?></td>
                                 <td>
-                                    <span class="badge <?php echo $section['is_active'] == 1 ? 'bg-success' : 'bg-danger'; ?>">
-                                        <?php echo $section['is_active'] == 1 ? 'Active' : 'Inactive'; ?>
+                                    <span class="badge <?php echo $section['status'] === 'Current' ? 'bg-success' : ($section['status'] === 'Past' ? 'bg-warning' : 'bg-danger'); ?>">
+                                        <?php echo htmlspecialchars($section['status']); ?>
                                     </span>
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm edit-section-btn" data-bs-toggle="modal" data-bs-target="#editSectionModal" data-id="<?php echo $section['id']; ?>">Edit</button>
-                                    <button type="button" class="btn btn-danger btn-sm delete-section-btn" data-bs-toggle="modal" data-bs-target="#deleteSectionModal" data-id="<?php echo $section['id']; ?>">Delete</button>
+                                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                                        <button type="button" class="btn btn-danger btn-sm delete-section-btn" data-bs-toggle="modal" data-bs-target="#deleteSectionModal" data-id="<?php echo $section['id']; ?>">Delete</button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($sections)): ?>
-                            <tr><td colspan="6" class="text-center">No sections found.</td></tr>
+                            <tr>
+                                <td colspan="6" class="text-center">No sections found.</td>
+                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -226,12 +231,16 @@ if (!$stmt) {
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm edit-course-btn" data-bs-toggle="modal" data-bs-target="#editCourseModal" data-id="<?php echo $course['id']; ?>">Edit</button>
-                                    <button type="button" class="btn btn-danger btn-sm delete-course-btn" data-bs-toggle="modal" data-bs-target="#deleteCourseModal" data-id="<?php echo $course['id']; ?>">Delete</button>
+                                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                                        <button type="button" class="btn btn-danger btn-sm delete-course-btn" data-bs-toggle="modal" data-bs-target="#deleteCourseModal" data-id="<?php echo $course['id']; ?>">Delete</button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($courses)): ?>
-                            <tr><td colspan="4" class="text-center">No courses found.</td></tr>
+                            <tr>
+                                <td colspan="4" class="text-center">No courses found.</td>
+                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -268,18 +277,22 @@ if (!$stmt) {
                             <tr>
                                 <td><?php echo htmlspecialchars($school_year['year']); ?></td>
                                 <td>
-                                    <span class="badge <?php echo $school_year['is_active'] == 1 ? 'bg-success' : 'bg-danger'; ?>">
-                                        <?php echo $school_year['is_active'] == 1 ? 'Active' : 'Inactive'; ?>
+                                    <span class="badge <?php echo $school_year['status'] === 'Current' ? 'bg-success' : ($school_year['status'] === 'Past' ? 'bg-warning' : 'bg-danger'); ?>">
+                                        <?php echo htmlspecialchars($school_year['status']); ?>
                                     </span>
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm edit-school-year-btn" data-bs-toggle="modal" data-bs-target="#editSchoolYearModal" data-id="<?php echo $school_year['id']; ?>">Edit</button>
-                                    <button type="button" class="btn btn-danger btn-sm delete-school-year-btn" data-bs-toggle="modal" data-bs-target="#deleteSchoolYearModal" data-id="<?php echo $school_year['id']; ?>">Delete</button>
+                                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                                        <button type="button" class="btn btn-danger btn-sm delete-school-year-btn" data-bs-toggle="modal" data-bs-target="#deleteSchoolYearModal" data-id="<?php echo $school_year['id']; ?>">Delete</button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($school_years)): ?>
-                            <tr><td colspan="3" class="text-center">No school years found.</td></tr>
+                            <tr>
+                                <td colspan="3" class="text-center">No school years found.</td>
+                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -307,7 +320,7 @@ if (!$stmt) {
                         <select class="form-select" id="addSectionSchoolYear" name="school_year_id" required>
                             <option value="">Select School Year</option>
                             <?php foreach ($school_years as $id => $sy): ?>
-                                <option value="<?php echo $id; ?>"><?php echo $sy['year']; ?></option>
+                                <option value="<?php echo $id; ?>"><?php echo $sy['year']; ?> (<?php echo $sy['status']; ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -333,13 +346,7 @@ if (!$stmt) {
                         <label for="addSectionSection" class="form-label">Section</label>
                         <input type="text" class="form-control" id="addSectionSection" name="section" required placeholder="e.g., Section A">
                     </div>
-                    <div class="mb-3">
-                        <label for="addSectionStatus" class="form-label">Status</label>
-                        <select class="form-select" id="addSectionStatus" name="is_active" required>
-                            <option value="1">Active</option>
-                            <option value="0">Inactive</option>
-                        </select>
-                    </div>
+                    <!-- Status is automatically set in section_actions.php based on the school year's status -->
                 </form>
             </div>
             <div class="modal-footer">
@@ -367,7 +374,7 @@ if (!$stmt) {
                         <select class="form-select" id="editSectionSchoolYear" name="school_year_id" required>
                             <option value="">Select School Year</option>
                             <?php foreach ($school_years as $id => $sy): ?>
-                                <option value="<?php echo $id; ?>"><?php echo $sy['year']; ?></option>
+                                <option value="<?php echo $id; ?>"><?php echo $sy['year']; ?> (<?php echo $sy['status']; ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -395,9 +402,10 @@ if (!$stmt) {
                     </div>
                     <div class="mb-3">
                         <label for="editSectionStatus" class="form-label">Status</label>
-                        <select class="form-select" id="editSectionStatus" name="is_active" required>
-                            <option value="1">Active</option>
-                            <option value="0">Inactive</option>
+                        <select class="form-select" id="editSectionStatus" name="status" required>
+                            <option value="Current">Current</option>
+                            <option value="Past">Past</option>
+                            <option value="Inactive">Inactive</option>
                         </select>
                     </div>
                 </form>
@@ -410,28 +418,30 @@ if (!$stmt) {
     </div>
 </div>
 
-<!-- Delete Section Modal -->
-<div class="modal fade" id="deleteSectionModal" tabindex="-1" aria-labelledby="deleteSectionModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteSectionModalLabel">Confirm Deletion</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this section? This action cannot be undone.</p>
-                <form id="deleteSectionForm" method="POST" action="/capstone-admin/admin/section_actions.php">
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" id="deleteSectionId" name="id">
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-                <button type="submit" form="deleteSectionForm" class="btn btn-danger">Yes, Delete Now</button>
+<?php if ($_SESSION['role'] === 'admin'): ?>
+    <!-- Delete Section Modal -->
+    <div class="modal fade" id="deleteSectionModal" tabindex="-1" aria-labelledby="deleteSectionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteSectionModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this section? This action cannot be undone.</p>
+                    <form id="deleteSectionForm" method="POST" action="/capstone-admin/admin/section_actions.php">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" id="deleteSectionId" name="id">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                    <button type="submit" form="deleteSectionForm" class="btn btn-danger">Yes, Delete Now</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+<?php endif; ?>
 
 <!-- Add Course Modal -->
 <div class="modal fade" id="addCourseModal" tabindex="-1" aria-labelledby="addCourseModalLabel" aria-hidden="true">
@@ -514,28 +524,30 @@ if (!$stmt) {
     </div>
 </div>
 
-<!-- Delete Course Modal -->
-<div class="modal fade" id="deleteCourseModal" tabindex="-1" aria-labelledby="deleteCourseModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteCourseModalLabel">Confirm Deletion</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this course? This action cannot be undone.</p>
-                <form id="deleteCourseForm" method="POST" action="/capstone-admin/admin/course_actions.php">
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" id="deleteCourseId" name="id">
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-                <button type="submit" form="deleteCourseForm" class="btn btn-danger">Yes, Delete Now</button>
+<?php if ($_SESSION['role'] === 'admin'): ?>
+    <!-- Delete Course Modal -->
+    <div class="modal fade" id="deleteCourseModal" tabindex="-1" aria-labelledby="deleteCourseModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteCourseModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this course? This action cannot be undone.</p>
+                    <form id="deleteCourseForm" method="POST" action="/capstone-admin/admin/course_actions.php">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" id="deleteCourseId" name="id">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                    <button type="submit" form="deleteCourseForm" class="btn btn-danger">Yes, Delete Now</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+<?php endif; ?>
 
 <!-- Add School Year Modal -->
 <div class="modal fade" id="addSchoolYearModal" tabindex="-1" aria-labelledby="addSchoolYearModalLabel" aria-hidden="true">
@@ -554,9 +566,10 @@ if (!$stmt) {
                     </div>
                     <div class="mb-3">
                         <label for="addSchoolYearStatus" class="form-label">Status</label>
-                        <select class="form-select" id="addSchoolYearStatus" name="is_active" required>
-                            <option value="1">Active</option>
-                            <option value="0">Inactive</option>
+                        <select class="form-select" id="addSchoolYearStatus" name="status" required>
+                            <option value="Current">Current</option>
+                            <option value="Past">Past</option>
+                            <option value="Inactive">Inactive</option>
                         </select>
                     </div>
                 </form>
@@ -583,13 +596,14 @@ if (!$stmt) {
                     <input type="hidden" id="editSchoolYearId" name="id">
                     <div class="mb-3">
                         <label for="editSchoolYearYear" class="form-label">School Year</label>
-                        <input type="text" class="form-control" id="editSchoolYearYear" name="year" required>
+                        <input type="text" class="form-control" id="editSchoolYearYear" name="year" required placeholder="e.g., 2024-2025">
                     </div>
                     <div class="mb-3">
                         <label for="editSchoolYearStatus" class="form-label">Status</label>
-                        <select class="form-select" id="editSchoolYearStatus" name="is_active" required>
-                            <option value="1">Active</option>
-                            <option value="0">Inactive</option>
+                        <select class="form-select" id="editSchoolYearStatus" name="status" required>
+                            <option value="Current">Current</option>
+                            <option value="Past">Past</option>
+                            <option value="Inactive">Inactive</option>
                         </select>
                     </div>
                 </form>
@@ -602,133 +616,150 @@ if (!$stmt) {
     </div>
 </div>
 
-<!-- Delete School Year Modal -->
-<div class="modal fade" id="deleteSchoolYearModal" tabindex="-1" aria-labelledby="deleteSchoolYearModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteSchoolYearModalLabel">Confirm Deletion</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this school year? This action cannot be undone.</p>
-                <form id="deleteSchoolYearForm" method="POST" action="/capstone-admin/admin/school_year_actions.php">
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" id="deleteSchoolYearId" name="id">
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-                <button type="submit" form="deleteSchoolYearForm" class="btn btn-danger">Yes, Delete Now</button>
-            </div>
+<?php if ($_SESSION['role'] === 'admin'): ?>
+    <!-- Delete School Year Modal -->
+    <div class="modal fade" id="deleteSchoolYearModal" tabindex="-1" aria-labelledby="deleteSchoolYearModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <main class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteSchoolYearModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this school year? This action cannot be undone.</p>
+                    <form id="deleteSchoolYearForm" method="POST" action="/capstone-admin/admin/school_year_actions.php">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" id="deleteSchoolYearId" name="id">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                    <button type="submit" form="deleteSchoolYearForm" class="btn btn-danger">Yes, Delete Now</button>
+                </div>
+            </main>
         </div>
     </div>
-</div>
+<?php endif; ?>
 
 <script>
-// Search functionality
-document.querySelector('input[name="search"]').addEventListener('input', function () {
-    const search = this.value.toLowerCase();
-    document.querySelectorAll('.records tbody tr').forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(search) ? '' : 'none';
+    // Populate Edit Section Modal
+    document.querySelectorAll('.edit-section-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = this.dataset.id;
+            fetch('/capstone-admin/admin/section_actions.php?action=get&id=' + id)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Section fetch response:', data); // Log response for debugging
+                    if (data.status === 200 && data.data) {
+                        const section = data.data;
+                        document.getElementById('editSectionId').value = section.id;
+                        document.getElementById('editSectionSchoolYear').value = section.school_year_id;
+                        document.getElementById('editSectionCourse').value = section.course_id;
+                        document.getElementById('editSectionYearLevel').value = section.year_level;
+                        document.getElementById('editSectionSection').value = section.section;
+                        document.getElementById('editSectionStatus').value = section.status;
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to fetch section data.'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching section data:', error);
+                    alert('Failed to load section data: ' + error.message);
+                });
+        });
     });
-});
 
-// Populate Edit Section Modal
-document.querySelectorAll('.edit-section-btn').forEach(button => {
-    button.addEventListener('click', function () {
-        const id = this.dataset.id;
-        fetch('/capstone-admin/admin/section_actions.php?action=get&id=' + id)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 200) {
-                    const section = data.data;
-                    document.getElementById('editSectionId').value = section.id;
-                    document.getElementById('editSectionSchoolYear').value = section.school_year_id;
-                    document.getElementById('editSectionCourse').value = section.course_id;
-                    document.getElementById('editSectionYearLevel').value = section.year_level;
-                    document.getElementById('editSectionSection').value = section.section;
-                    document.getElementById('editSectionStatus').value = section.is_active;
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching section data:', error);
-                alert('Failed to load section data.');
+    <?php if ($_SESSION['role'] === 'admin'): ?>
+        // Populate Delete Section Modal
+        document.querySelectorAll('.delete-section-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                document.getElementById('deleteSectionId').value = this.dataset.id;
             });
-    });
-});
+        });
+    <?php endif; ?>
 
-// Populate Delete Section Modal
-document.querySelectorAll('.delete-section-btn').forEach(button => {
-    button.addEventListener('click', function () {
-        document.getElementById('deleteSectionId').value = this.dataset.id;
+    // Populate Edit Course Modal
+    document.querySelectorAll('.edit-course-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = this.dataset.id;
+            fetch('/capstone-admin/admin/course_actions.php?action=get&id=' + id)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Course fetch response:', data); // Log response for debugging
+                    if (data.status === 200 && data.data) {
+                        const course = data.data;
+                        document.getElementById('editCourseId').value = course.id;
+                        document.getElementById('editCourseName').value = course.name;
+                        document.getElementById('editCourseCode').value = course.code;
+                        document.getElementById('editCourseDescription').value = course.description || '';
+                        document.getElementById('editCourseStatus').value = course.is_active;
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to fetch course data.'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching course data:', error);
+                    alert('Failed to load course data: ' + error.message);
+                });
+        });
     });
-});
 
-// Populate Edit Course Modal
-document.querySelectorAll('.edit-course-btn').forEach(button => {
-    button.addEventListener('click', function () {
-        const id = this.dataset.id;
-        fetch('/capstone-admin/admin/course_actions.php?action=get&id=' + id)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 200) {
-                    const course = data.data;
-                    document.getElementById('editCourseId').value = course.id;
-                    document.getElementById('editCourseName').value = course.name;
-                    document.getElementById('editCourseCode').value = course.code;
-                    document.getElementById('editCourseDescription').value = course.description || '';
-                    document.getElementById('editCourseStatus').value = course.is_active;
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching course data:', error);
-                alert('Failed to load course data.');
+    <?php if ($_SESSION['role'] === 'admin'): ?>
+        // Populate Delete Course Modal
+        document.querySelectorAll('.delete-course-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                document.getElementById('deleteCourseId').value = this.dataset.id;
             });
-    });
-});
+        });
+    <?php endif; ?>
 
-// Populate Delete Course Modal
-document.querySelectorAll('.delete-course-btn').forEach(button => {
-    button.addEventListener('click', function () {
-        document.getElementById('deleteCourseId').value = this.dataset.id;
+    // Populate Edit School Year Modal
+    document.querySelectorAll('.edit-school-year-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = this.dataset.id;
+            fetch('/capstone-admin/admin/school_year_actions.php?action=get&id=' + id)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('School year fetch response:', data); // Log response for debugging
+                    if (data.status === 200 && data.data) {
+                        const schoolYear = data.data;
+                        document.getElementById('editSchoolYearId').value = schoolYear.id;
+                        document.getElementById('editSchoolYearYear').value = schoolYear.year;
+                        document.getElementById('editSchoolYearStatus').value = schoolYear.status;
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to fetch school year data.'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching school year data:', error);
+                    alert('Failed to load school year data: ' + error.message);
+                });
+        });
     });
-});
 
-// Populate Edit School Year Modal
-document.querySelectorAll('.edit-school-year-btn').forEach(button => {
-    button.addEventListener('click', function () {
-        const id = this.dataset.id;
-        fetch('/capstone-admin/admin/school_year_actions.php?action=get&id=' + id)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 200) {
-                    const schoolYear = data.data;
-                    document.getElementById('editSchoolYearId').value = schoolYear.id;
-                    document.getElementById('editSchoolYearYear').value = schoolYear.year;
-                    document.getElementById('editSchoolYearStatus').value = schoolYear.is_active;
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching school year data:', error);
-                alert('Failed to load school year data.');
+    <?php if ($_SESSION['role'] === 'admin'): ?>
+        // Populate Delete School Year Modal
+        document.querySelectorAll('.delete-school-year-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                document.getElementById('deleteSchoolYearId').value = this.dataset.id;
             });
-    });
-});
-
-// Populate Delete School Year Modal
-document.querySelectorAll('.delete-school-year-btn').forEach(button => {
-    button.addEventListener('click', function () {
-        document.getElementById('deleteSchoolYearId').value = this.dataset.id;
-    });
-});
+        });
+    <?php endif; ?>
 </script>
 
 <?php include('includes/footer.php'); ?>

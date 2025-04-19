@@ -8,13 +8,6 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Ensure the user is a student
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
-    $_SESSION['alert'] = ['message' => 'Please log in as a student to view your request history.', 'type' => 'danger'];
-    header('Location: index.php');
-    exit;
-}
-
 // Fetch the user's document requests (active, i.e., not archived)
 $user_id = $_SESSION['user_id'];
 $data = ['documentRequests' => [], 'archivedRequests' => []];
@@ -51,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['retrieve_request_id']
 $stmt = $conn->prepare("
     SELECT r.id, r.document_type, r.requested_date, r.status, r.payment_status,
            u.firstname, u.lastname, u.email, u.number,
-           u.birthdate AS student_birthdate, u.studentid AS student_id, u.year_level, u.course_id, u.section_id, r.price, r.remarks AS purpose
+           u.birthdate AS student_birthdate, u.studentid AS student_id, u.year_level, u.course_id, u.section_id, r.unit_price, r.remarks AS purpose
     FROM requests r
     LEFT JOIN users u ON r.user_id = u.id
     WHERE r.user_id = ? AND r.archived = 0
@@ -67,7 +60,7 @@ $stmt->close();
 $stmt = $conn->prepare("
     SELECT r.id, r.document_type, r.requested_date, r.status, r.payment_status,
            u.firstname, u.lastname, u.email, u.number,
-           u.birthdate AS student_birthdate, u.studentid AS student_id, u.year_level, u.course_id, u.section_id, r.price, r.remarks AS purpose
+           u.birthdate AS student_birthdate, u.studentid AS student_id, u.year_level, u.course_id, u.section_id, r.unit_price, r.remarks AS purpose
     FROM requests r
     LEFT JOIN users u ON r.user_id = u.id
     WHERE r.user_id = ? AND r.archived = 1
@@ -85,76 +78,75 @@ $stmt->close();
 <main>
     <?php alertMessage(); ?>
     <div class="page-header">
-            <h1>Your Request History</h1>
-            <small>Check the history of your document request here.</small>
+        <h1>Your Request History</h1>
+        <small>Check the history of your document request here.</small>
+    </div>
+    <div class="page-content">
+        <div class="mb-3 text-end">
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#viewArchivedModal">
+                View Archived Requests
+            </button>
         </div>
-        <div class="page-content">
-
-                <div class="mb-3 text-end">
-                    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#viewArchivedModal">
-                        View Archived Requests
-                    </button>
-                </div>
-            <!-- Document Requests Table -->
-            <div class="records table-responsive">
-                <table width="100%">
-                        <thead>
+        <!-- Document Requests Table -->
+        <div class="records table-responsive">
+            <table width="100%">
+                <thead>
+                    <tr>
+                        <th>Document Requested</th>
+                        <th>Price</th>
+                        <th>Request Date</th>
+                        <th>Status</th>
+                        <th>Payment Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!empty($data['documentRequests'])): ?>
+                        <?php foreach ($data['documentRequests'] as $request): ?>
                             <tr>
-                                <th>Document Requested</th>
-                                <th>Request Date</th>
-                                <th>Status</th>
-                                <th>Payment Status</th>
-                                <th>Action</th>
+                                <td><?= htmlspecialchars($request['document_type']); ?></td>
+                                <td>₱<?= htmlspecialchars(number_format($request['unit_price'], 2)); ?></td>
+                                <td><?= htmlspecialchars(date('Y-m-d', strtotime($request['requested_date']))); ?></td>
+                                <td><?= htmlspecialchars(ucfirst($request['status'])); ?></td>
+                                <td><?= htmlspecialchars(ucfirst($request['payment_status'] ?? 'N/A')); ?></td>
+                                <td>
+                                    <button
+                                        type="button"
+                                        class="btn btn-primary btn-sm me-1"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#viewInfoModal"
+                                        data-id="<?= htmlspecialchars($request['id']); ?>"
+                                        data-requested_date="<?= htmlspecialchars(date('Y-m-d H:i:s', strtotime($request['requested_date']))); ?>"
+                                        data-firstname="<?= htmlspecialchars($request['firstname']); ?>"
+                                        data-lastname="<?= htmlspecialchars($request['lastname']); ?>"
+                                        data-email="<?= htmlspecialchars($request['email']); ?>"
+                                        data-number="<?= htmlspecialchars($request['number']); ?>"
+                                        data-student_birthdate="<?= htmlspecialchars($request['student_birthdate'] ?? 'N/A'); ?>"
+                                        data-student_id="<?= htmlspecialchars($request['student_id'] ?? 'N/A'); ?>"
+                                        data-year_level="<?= htmlspecialchars($request['year_level'] ?? 'N/A'); ?>"
+                                        data-course_id="<?= htmlspecialchars($request['course_id'] ?? 'N/A'); ?>"
+                                        data-section_id="<?= htmlspecialchars($request['section_id'] ?? 'N/A'); ?>"
+                                        data-document_type="<?= htmlspecialchars($request['document_type']); ?>"
+                                        data-status="<?= htmlspecialchars($request['status']); ?>"
+                                        data-unit_price="<?= htmlspecialchars(number_format($request['unit_price'], 2)); ?>"
+                                        data-payment_status="<?= htmlspecialchars($request['payment_status'] ?? 'N/A'); ?>"
+                                        data-purpose="<?= htmlspecialchars($request['purpose']); ?>">
+                                        View Information
+                                    </button>
+                                    <form method="POST" style="display:inline;">
+                                        <input type="hidden" name="archive_request_id" value="<?= htmlspecialchars($request['id']); ?>">
+                                        <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Are you sure you want to archive this request?')">Archive</button>
+                                    </form>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!empty($data['documentRequests'])): ?>
-                                <?php foreach ($data['documentRequests'] as $request): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($request['document_type']); ?></td>
-                                        <td><?= htmlspecialchars(date('Y-m-d', strtotime($request['requested_date']))); ?></td>
-                                        <td><?= htmlspecialchars(ucfirst($request['status'])); ?></td>
-                                        <td><?= htmlspecialchars(ucfirst($request['payment_status'] ?? 'N/A')); ?></td>
-                                        <td>
-                                            <button
-                                                type="button"
-                                                class="btn btn-primary btn-sm me-1"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#viewInfoModal"
-                                                data-id="<?= htmlspecialchars($request['id']); ?>"
-                                                data-requested_date="<?= htmlspecialchars(date('Y-m-d H:i:s', strtotime($request['requested_date']))); ?>"
-                                                data-firstname="<?= htmlspecialchars($request['firstname']); ?>"
-                                                data-lastname="<?= htmlspecialchars($request['lastname']); ?>"
-                                                data-email="<?= htmlspecialchars($request['email']); ?>"
-                                                data-number="<?= htmlspecialchars($request['number']); ?>"
-                                                data-student_birthdate="<?= htmlspecialchars($request['student_birthdate'] ?? 'N/A'); ?>"
-                                                data-student_id="<?= htmlspecialchars($request['student_id'] ?? 'N/A'); ?>"
-                                                data-year_level="<?= htmlspecialchars($request['year_level'] ?? 'N/A'); ?>"
-                                                data-course_id="<?= htmlspecialchars($request['course_id'] ?? 'N/A'); ?>"
-                                                data-section_id="<?= htmlspecialchars($request['section_id'] ?? 'N/A'); ?>"
-                                                data-document_type="<?= htmlspecialchars($request['document_type']); ?>"
-                                                data-status="<?= htmlspecialchars($request['status']); ?>"
-                                                data-price="<?= htmlspecialchars($request['price']); ?>"
-                                                data-payment_status="<?= htmlspecialchars($request['payment_status'] ?? 'N/A'); ?>"
-                                                data-purpose="<?= htmlspecialchars($request['purpose']); ?>">
-                                                View Information
-                                            </button>
-                                            <form method="POST" style="display:inline;">
-                                                <input type="hidden" name="archive_request_id" value="<?= htmlspecialchars($request['id']); ?>">
-                                                <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Are you sure you want to archive this request?')">Archive</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="5" class="text-center">No active document requests found.</td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="6" class="text-center">No active document requests found.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </main>
@@ -231,7 +223,7 @@ $stmt->close();
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label">Price</label>
-                        <input name="price" value="" type="text" class="form-control" readonly>
+                        <input name="unit_price" value="" type="text" class="form-control" readonly>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Payment Status</label>
@@ -266,6 +258,7 @@ $stmt->close();
                         <thead>
                             <tr>
                                 <th>Document Requested</th>
+                                <th>Price</th>
                                 <th>Request Date</th>
                                 <th>Status</th>
                                 <th>Payment Status</th>
@@ -277,6 +270,7 @@ $stmt->close();
                                 <?php foreach ($data['archivedRequests'] as $request): ?>
                                     <tr>
                                         <td><?= htmlspecialchars($request['document_type']); ?></td>
+                                        <td>₱<?= htmlspecialchars(number_format($request['unit_price'], 2)); ?></td>
                                         <td><?= htmlspecialchars(date('Y-m-d', strtotime($request['requested_date']))); ?></td>
                                         <td><?= htmlspecialchars(ucfirst($request['status'])); ?></td>
                                         <td><?= htmlspecialchars(ucfirst($request['payment_status'] ?? 'N/A')); ?></td>
@@ -299,7 +293,7 @@ $stmt->close();
                                                 data-section_id="<?= htmlspecialchars($request['section_id'] ?? 'N/A'); ?>"
                                                 data-document_type="<?= htmlspecialchars($request['document_type']); ?>"
                                                 data-status="<?= htmlspecialchars($request['status']); ?>"
-                                                data-price="<?= htmlspecialchars($request['price']); ?>"
+                                                data-unit_price="<?= htmlspecialchars(number_format($request['unit_price'], 2)); ?>"
                                                 data-payment_status="<?= htmlspecialchars($request['payment_status'] ?? 'N/A'); ?>"
                                                 data-purpose="<?= htmlspecialchars($request['purpose']); ?>">
                                                 View Information
@@ -313,7 +307,7 @@ $stmt->close();
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="5" class="text-center">No archived requests found.</td>
+                                    <td colspan="6" class="text-center">No archived requests found.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -334,7 +328,7 @@ $stmt->close();
         const fields = [
             "firstname", "lastname", "email", "number",
             "student_id", "year_level", "course_id", "section_id", "requested_date",
-            "student_birthdate", "document_type", "status", "price",
+            "student_birthdate", "document_type", "status", "unit_price",
             "payment_status"
         ];
 

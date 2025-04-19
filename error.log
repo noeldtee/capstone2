@@ -78,3 +78,31 @@ Stack trace:
 [16-Apr-2025 16:00:25 Europe/Berlin] Redirecting to: sections.php with message: Section added successfully. (success)
 [16-Apr-2025 16:00:31 Europe/Berlin] Redirecting to: sections.php with message: Cannot delete section: There are 1 users assigned to this section. Please reassign or delete these users first. (danger)
 [16-Apr-2025 16:06:48 Europe/Berlin] Redirecting to: students.php? with message: User deleted successfully. (success)
+[17-Apr-2025 15:04:21 Europe/Berlin] Redirecting to: sections.php with message: Invalid status. (danger)
+[17-Apr-2025 15:09:00 Europe/Berlin] Redirecting to: sections.php with message: School year already exists. (danger)
+[18-Apr-2025 05:58:09 Europe/Berlin] Redirecting to: students.php? with message: User updated successfully. (success)
+[18-Apr-2025 05:58:16 Europe/Berlin] Redirecting to: students.php? with message: User updated successfully. (success)
+[18-Apr-2025 05:58:23 Europe/Berlin] Redirecting to: students.php? with message: User updated successfully. (success)
+[18-Apr-2025 05:58:35 Europe/Berlin] Redirecting to: sections.php with message: Section updated successfully. (success)
+[18-Apr-2025 07:06:44 Europe/Berlin] Redirecting to: ../index.php with message: You must be logged in as an admin to perform this action. (danger)
+[18-Apr-2025 07:08:53 Europe/Berlin] Redirecting to: sections.php with message: Invalid action. (danger)
+[18-Apr-2025 07:09:43 Europe/Berlin] Redirecting to: sections.php with message: Invalid action. (danger)
+[18-Apr-2025 07:10:36 Europe/Berlin] PHP Warning:  Undefined array key "status" in C:\xampp\htdocs\capstone-admin\admin\section_actions.php on line 40
+[18-Apr-2025 07:10:36 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Column 'status' cannot be null in C:\xampp\htdocs\capstone-admin\admin\section_actions.php:66
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\section_actions.php(66): mysqli_stmt->execute()
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\section_actions.php on line 66
+[18-Apr-2025 07:10:59 Europe/Berlin] Redirecting to: sections.php with message: Course code already exists. (danger)
+[18-Apr-2025 07:11:04 Europe/Berlin] Redirecting to: sections.php with message: Course added successfully. (success)
+[18-Apr-2025 07:11:13 Europe/Berlin] Redirecting to: sections.php with message: School year added successfully. (success)
+[18-Apr-2025 07:18:17 Europe/Berlin] Redirecting to: sections.php with message: Course updated successfully. (success)
+[18-Apr-2025 07:18:33 Europe/Berlin] Redirecting to: sections.php with message: Section added successfully. (success)
+[18-Apr-2025 08:28:35 Europe/Berlin] Redirecting to: ../index.php with message: You must be logged in as an admin to perform this action. (danger)
+[18-Apr-2025 08:34:04 Europe/Berlin] Redirecting to: ../index.php with message: You must be logged in as an admin to perform this action. (danger)
+[18-Apr-2025 08:37:01 Europe/Berlin] Redirecting to: students.php? with message: User updated successfully. (success)
+[18-Apr-2025 08:37:05 Europe/Berlin] Redirecting to: students.php? with message: User updated successfully. (success)
+[18-Apr-2025 08:37:13 Europe/Berlin] Redirecting to: students.php? with message: User updated successfully. (success)
+[18-Apr-2025 08:37:17 Europe/Berlin] Redirecting to: students.php? with message: User updated successfully. (success)
+[18-Apr-2025 16:21:52 Europe/Berlin] Redirecting to: students.php? with message: User added successfully. (success)
+[18-Apr-2025 16:48:41 Europe/Berlin] Redirecting to: sections.php with message: Section added successfully. (success)

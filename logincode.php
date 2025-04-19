@@ -98,23 +98,14 @@ if (isset($_POST['loginBtn'])) {
             $_SESSION['login_attempts'] = 0;
 
             // Redirect based on role
-            switch ($row['role']) {
-                case 'admin':
-                    redirect('admin/dashboard.php', 'Welcome Admin', 'success');
-                    break;
-                case 'staff':
-                    redirect('staff/dashboard.php', 'Welcome Staff', 'success');
-                    break;
-                case 'cashier':
-                    redirect('cashier/dashboard.php', 'Welcome Cashier', 'success');
-                    break;
-                case 'student':
-                case 'alumni':
-                    redirect('users/dashboard.php', 'Welcome to the Student Dashboard', 'success');
-                    break;
-                default:
-                    redirect('index.php', 'Invalid Role', 'danger');
-                    exit();
+            $role = strtolower($row['role']);
+            if (in_array($role, ['admin', 'registrar', 'cashier'])) {
+                redirect('admin/dashboard.php', 'Welcome to the Admin Dashboard', 'success');
+            } elseif (in_array($role, ['student', 'alumni'])) {
+                redirect('users/dashboard.php', 'Welcome to the Student Dashboard', 'success');
+            } else {
+                redirect('index.php', 'Invalid Role', 'danger');
+                exit();
             }
         } else {
             error_log("Failed login attempt for email: $email at " . date('Y-m-d H:i:s'));

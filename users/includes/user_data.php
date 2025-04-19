@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Ensure database connection is available
 if (!isset($conn)) {
-    require $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/config/db.php'; // Adjust path as needed
+    require $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/config/dbcon.php';
 }
 
 // Fetch the logged-in user's details
@@ -29,13 +29,30 @@ if ($user_id) {
     $stmt = $conn->prepare("SELECT * FROM notifications WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC LIMIT 5");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
-    $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $result = $stmt->get_result();
+    $notifications = $result->fetch_all(MYSQLI_ASSOC);
     $notification_count = count($notifications);
     $stmt->close();
+
+    // Log for debugging
+    error_log("Fetched notifications for user $user_id: " . print_r($notifications, true));
 }
 
-// Base URL for profile images (adjust based on your project structure)
-$base_url = '/'; // Adjust this to your project's base URL (e.g., '/your_project/')
-$default_profile = $base_url . '/assets/images/default_profile.png';
-$profile_image = $user['profile'] ? $base_url . ltrim($user['profile'], '/') : $default_profile;
+// Define base path for assets as an absolute URL relative to the web root
+$base_path = '/capstone-admin/'; // Absolute path from web root
+$default_profile = $base_path . 'assets/images/default_profile.png';
+
+// Handle profile image
+if ($user['profile']) {
+    // Clean the stored profile path
+    $clean_profile = preg_replace('#^\.\./#', '', $user['profile']); // Remove leading '../' if present
+    $full_path = $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/' . $clean_profile;
+    $profile_image = file_exists($full_path) ? $base_path . $clean_profile : $default_profile;
+} else {
+    $profile_image = $default_profile;
+}
+
+// Log profile image path for debugging
+error_log("Profile image path: $profile_image");
+error_log("Full server path checked: $full_path");
 ?>

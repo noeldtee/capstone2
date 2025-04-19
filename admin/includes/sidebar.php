@@ -25,17 +25,11 @@
                         <small>Request Logs</small>
                     </a>
                 </li>
-                <li>
-                    <a href="action_logs.php" class="<?php echo (isset($page_title) && $page_title === 'Action Logs') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                        <small>Action Logs</small>
-                    </a>
-                </li>
                 <!-- Settings with Bootstrap Dropdown -->
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Document Management', 'Academic Management', 'Users Management'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fa-solid fa-gear"></i>
-                        <small>Settings</small>
+                        <small>Management</small>
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="settingsDropdown">
                         <li>
@@ -58,12 +52,34 @@
                         </li>
                     </ul>
                 </li>
-                <li>
-                    <a href="admin.php" class="<?php echo (isset($page_title) && $page_title === 'Admin Management') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-user-shield"></i>
-                        <small>Admin Management</small>
-                    </a>
-                </li>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Action Logs', 'Settings - Terms and Conditions', 'Admin Users'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-user-shield"></i>
+                            <small>Admin<br>Management</small>
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="settingsDropdown">
+                            <li>
+                                <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Action Logs') ? 'active' : ''; ?>" href="action_logs.php">
+                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                    Action Logs
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Settings - Terms and Conditions') ? 'active' : ''; ?>" href="settings.php">
+                                    <i class="fa-solid fa-gear"></i>
+                                    Terms and Conditions
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Admin Users') ? 'active' : ''; ?>" href="admin.php">
+                                    <i class="fa-solid fa-user-shield"></i>
+                                    Admin Users
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                <?php endif; ?>
                 <li class="logout">
                     <a href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
                         <i class="fa-solid fa-right-from-bracket"></i>
