@@ -8,6 +8,11 @@ if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSI
     exit();
 }
 
+// Generate CSRF token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $token = isset($_GET['token']) ? trim($_GET['token']) : '';
 $request = null;
 $message = '';
@@ -26,7 +31,7 @@ if ($token) {
         if ($result->num_rows > 0) {
             $request = $result->fetch_assoc();
         } else {
-            $message = "Invalid or expired QR code. Please verify the request manually.";
+            $message = "Invalid or expired QR code. Please verify the request manually or contact the registrar.";
             $message_type = "danger";
         }
         $stmt->close();
@@ -41,27 +46,33 @@ if ($token) {
 
 // Handle marking as completed
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'mark_completed' && isset($_POST['id'])) {
-    $id = (int)$_POST['id'];
-    try {
-        $stmt = $conn->prepare("UPDATE requests SET status = 'Completed', pickup_token = NULL, updated_at = NOW() WHERE id = ? AND status = 'Ready to Pickup'");
-        $stmt->bind_param("i", $id);
-        if ($stmt->execute() && $stmt->affected_rows > 0) {
-            $qr_file = "uploads/qrcodes/request_$id.png";
-            if (file_exists($qr_file)) {
-                unlink($qr_file);
+    // Validate CSRF token
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        $message = "Invalid CSRF token. Please try again.";
+        $message_type = "danger";
+    } else {
+        $id = (int)$_POST['id'];
+        try {
+            $stmt = $conn->prepare("UPDATE requests SET status = 'Completed', pickup_token = NULL, updated_at = NOW() WHERE id = ? AND status = 'Ready to Pickup'");
+            $stmt->bind_param("i", $id);
+            if ($stmt->execute() && $stmt->affected_rows > 0) {
+                $qr_file = "Uploads/qrcodes/request_$id.png";
+                if (file_exists($qr_file)) {
+                    unlink($qr_file);
+                }
+                logAction($conn, 'Mark Completed via QR', "Request ID: $id", "Status changed to Completed via QR verification");
+                $message = "Request ID $id marked as Completed.";
+                $message_type = "success";
+                $request = null; // Clear request to prevent re-display
+            } else {
+                $message = "Failed to mark request as completed or request is not Ready to Pickup.";
+                $message_type = "danger";
             }
-            logAction($conn, 'Mark Completed via QR', "Request ID: $id", "Status changed to Completed via QR verification");
-            $message = "Request ID $id marked as Completed.";
-            $message_type = "success";
-            $request = null; // Clear request to prevent re-display
-        } else {
-            $message = "Failed to mark request as completed or request is not Ready to Pickup.";
+            $stmt->close();
+        } catch (Exception $e) {
+            $message = "Error marking request as completed: " . $e->getMessage();
             $message_type = "danger";
         }
-        $stmt->close();
-    } catch (Exception $e) {
-        $message = "Error marking request as completed: " . $e->getMessage();
-        $message_type = "danger";
     }
 }
 ?>
@@ -73,6 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify QR Code - BPC Registrar</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .mark-completed-btn .spinner-border {
+            margin-right: 5px;
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-5">
@@ -95,10 +111,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <p><strong>Student Name:</strong> <?php echo htmlspecialchars($request['firstname'] . ' ' . $request['lastname']); ?></p>
                     <p><strong>Student Number:</strong> <?php echo htmlspecialchars($request['number'] ?: 'N/A'); ?></p>
                     <p><strong>Status:</strong> <span class="badge bg-success"><?php echo htmlspecialchars($request['status']); ?></span></p>
-                    <form method="POST" action="verify_qr.php?token=<?php echo htmlspecialchars($token); ?>">
+                    <form method="POST" action="verify_qr.php?token=<?php echo htmlspecialchars($token); ?>" id="markCompletedForm">
                         <input type="hidden" name="action" value="mark_completed">
                         <input type="hidden" name="id" value="<?php echo htmlspecialchars($request['id']); ?>">
-                        <button type="submit" class="btn btn-primary">Mark as Completed</button>
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                        <button type="submit" class="btn btn-primary mark-completed-btn">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                            Mark as Completed
+                        </button>
                         <a href="request.php" class="btn btn-secondary">Back to Requests</a>
                     </form>
                 </div>
@@ -109,5 +129,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('markCompletedForm')?.addEventListener('submit', function (e) {
+            const button = this.querySelector('.mark-completed-btn');
+            const spinner = button.querySelector('.spinner-border');
+            spinner.style.display = 'inline-block';
+            button.disabled = true;
+            button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Completing...`;
+        });
+    </script>
 </body>
 </html>

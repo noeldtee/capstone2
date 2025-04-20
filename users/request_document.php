@@ -63,6 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
         $semester_name = $current_semester['semester'];
         $semester_year = $current_semester['year'];
 
+        // Fetch user details for course_id, section_id, year_id
+        $stmt = $conn->prepare("SELECT course_id, section_id, year_id FROM users WHERE id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $user_details = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
         // Check semester restrictions and prepare documents
         $stmt = $conn->prepare("SELECT name, unit_price, form_needed, restrict_per_semester FROM documents WHERE name = ? AND is_active = 1");
         $total_amount = 0;
@@ -129,6 +136,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                 'document_type' => $document_type,
                 'unit_price' => $unit_price,
                 'file_path' => $file_path,
+                'course_id' => $user_details['course_id'] ?? null,
+                'section_id' => $user_details['section_id'] ?? null,
+                'year_id' => $user_details['year_id'] ?? null,
             ];
         }
         $stmt->close();
@@ -138,13 +148,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
             if ($total_amount == 0) {
                 // No payment required, directly insert requests
                 $request_ids = [];
-                $stmt = $conn->prepare("INSERT INTO requests (user_id, document_type, quantity, unit_price, amount, payment_status, status, remarks, file_path, requested_date, created_at) VALUES (?, ?, 1, ?, ?, 'paid', 'Pending', ?, ?, NOW(), NOW())");
+                $doc_names = array_column($documents_to_request, 'document_type');
+                $stmt = $conn->prepare("INSERT INTO requests (user_id, document_type, quantity, unit_price, amount, payment_status, status, remarks, file_path, course_id, section_id, year_id, requested_date, created_at) VALUES (?, ?, 1, ?, ?, 'paid', 'Pending', ?, ?, ?, ?, ?, NOW(), NOW())");
+                
+                // Prepare statement for payments table
+                $stmt_payment = $conn->prepare("INSERT INTO payments (request_id, payment_method, amount, payment_status, description, payment_date, created_at) VALUES (?, 'N/A', ?, 'PAID', ?, NOW(), NOW())");
+                
                 foreach ($documents_to_request as $doc) {
                     $amount = (int)($doc['unit_price'] * 100);
                     $unit_price = (float)$doc['unit_price'];
-                    $stmt->bind_param("isdiss", $user_id, $doc['document_type'], $unit_price, $amount, $remarks, $doc['file_path']);
+                    $course_id = $doc['course_id'] ?? null;
+                    $section_id = $doc['section_id'] ?? null;
+                    $year_id = $doc['year_id'] ?? null;
+                    $stmt->bind_param("isdissiii", $user_id, $doc['document_type'], $unit_price, $amount, $remarks, $doc['file_path'], $course_id, $section_id, $year_id);
                     if ($stmt->execute()) {
-                        $request_ids[] = $conn->insert_id;
+                        $request_id = $conn->insert_id;
+                        $request_ids[] = $request_id;
+
+                        // Insert into payments table (fixed bind_param)
+                        $payment_amount = (float)$unit_price; // Already in pesos
+                        $description = "Payment for document request: {$doc['document_type']}";
+                        $stmt_payment->bind_param("ids", $request_id, $payment_amount, $description);
+                        if (!$stmt_payment->execute()) {
+                            error_log("Failed to insert payment for request ID $request_id: " . $stmt_payment->error);
+                            $error_message = "Failed to save payment record for {$doc['document_type']}.";
+                            $has_error = true;
+                            break;
+                        }
                     } else {
                         error_log("Failed to insert request for {$doc['document_type']}: " . $stmt->error);
                         $error_message = "Failed to save request for {$doc['document_type']}.";
@@ -153,6 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                     }
                 }
                 $stmt->close();
+                $stmt_payment->close();
 
                 if (!$has_error) {
                     // Create notifications for student
@@ -221,8 +252,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                             'description' => $description,
                             'line_items' => $line_items,
                             'payment_method_types' => ['gcash', 'card'],
-                            'success_url' => 'https://9b67-120-29-78-198.ngrok-free.app/capstone-admin/users/request_success.php?request_ids=' . urlencode(json_encode($documents_to_request)),
-                            'cancel_url' => 'https://9b67-120-29-78-198.ngrok-free.app/capstone-admin/users/request_document.php?error=cancelled',
+                            'success_url' => 'https://e5fc-120-29-78-198.ngrok-free.app/capstone-admin/users/request_success.php?request_ids=' . urlencode(json_encode($documents_to_request)),
+                            'cancel_url' => 'https://e5fc-120-29-78-198.ngrok-free.app/capstone-admin/users/request_document.php?error=cancelled',
                             'reference_number' => 'REQ_' . time(),
                             'send_email_receipt' => true,
                             'show_description' => true,

@@ -1,5 +1,5 @@
 <?php
-require $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/config/function.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/config/function.php';
 ?>
 
 <!DOCTYPE html>

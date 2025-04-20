@@ -173,11 +173,18 @@ try {
 
         case 'get':
             $id = (int)$_GET['id'];
-            $stmt = $conn->prepare("SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
-                                           r.unit_price, r.status, r.requested_date, r.file_path, r.remarks, r.rejection_reason 
-                                    FROM requests r 
-                                    JOIN users u ON r.user_id = u.id 
-                                    WHERE r.id = ?");
+            $stmt = $conn->prepare("
+                SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
+                       r.unit_price, r.status, r.requested_date, r.file_path, r.remarks, r.rejection_reason, 
+                       r.payment_status, u.email, u.number, u.year_level, 
+                       sy.year AS school_year, c.name AS course_name, s.section AS section_name
+                FROM requests r 
+                JOIN users u ON r.user_id = u.id 
+                LEFT JOIN courses c ON r.course_id = c.id 
+                LEFT JOIN sections s ON r.section_id = s.id 
+                LEFT JOIN school_years sy ON r.year_id = sy.id 
+                WHERE r.id = ?
+            ");
             $stmt->bind_param("i", $id);
             $stmt->execute();
             $result = $stmt->get_result();

@@ -73,14 +73,35 @@ if (!$payment_successful) {
 // Insert requests into the database since payment is successful
 $request_ids = [];
 $doc_names = array_column($documents_to_request, 'document_type');
-$stmt = $conn->prepare("INSERT INTO requests (user_id, document_type, quantity, unit_price, amount, payment_status, status, remarks, file_path, requested_date, created_at) VALUES (?, ?, 1, ?, ?, 'paid', 'Pending', ?, ?, NOW(), NOW())");
+$stmt = $conn->prepare("INSERT INTO requests (user_id, document_type, quantity, unit_price, amount, payment_status, status, remarks, file_path, course_id, section_id, year_id, requested_date, created_at) VALUES (?, ?, 1, ?, ?, 'paid', 'Pending', ?, ?, ?, ?, ?, NOW(), NOW())");
+
+// Prepare statement for payments table
+$stmt_payment = $conn->prepare("INSERT INTO payments (request_id, payment_method, amount, payment_status, description, payment_date, created_at) VALUES (?, ?, ?, 'PAID', ?, NOW(), NOW())");
+
 foreach ($documents_to_request as $doc) {
     $amount = (int)($doc['unit_price'] * 100);
     $unit_price = (float)$doc['unit_price'];
     $file_path = $doc['file_path'] ?? null;
-    $stmt->bind_param("isdiss", $user_id, $doc['document_type'], $unit_price, $amount, $remarks, $file_path);
+    $course_id = $doc['course_id'] ?? null;
+    $section_id = $doc['section_id'] ?? null;
+    $year_id = $doc['year_id'] ?? null;
+    $stmt->bind_param("isdissiii", $user_id, $doc['document_type'], $unit_price, $amount, $remarks, $file_path, $course_id, $section_id, $year_id);
     if ($stmt->execute()) {
-        $request_ids[] = $conn->insert_id;
+        $request_id = $conn->insert_id;
+        $request_ids[] = $request_id;
+
+        // Insert into payments table
+        $payment_method = "GCash"; // Default for testing; ideally fetch from PayMongo response
+        $payment_amount = (float)$unit_price; // Already in pesos
+        $description = "Payment for document request: {$doc['document_type']}";
+        $stmt_payment->bind_param("isds", $request_id, $payment_method, $payment_amount, $description);
+        if (!$stmt_payment->execute()) {
+            error_log("Failed to insert payment for request ID $request_id: " . $stmt_payment->error);
+            $_SESSION['message'] = "Failed to save payment record for {$doc['document_type']}.";
+            $_SESSION['message_type'] = 'danger';
+            header('Location: request_document.php');
+            exit;
+        }
     } else {
         error_log("Failed to insert request for {$doc['document_type']}: " . $stmt->error);
         $_SESSION['message'] = "Failed to save request for {$doc['document_type']}.";
@@ -90,6 +111,7 @@ foreach ($documents_to_request as $doc) {
     }
 }
 $stmt->close();
+$stmt_payment->close();
 
 // Create notifications for student
 $message = "Payment for " . implode(' and ', $doc_names) . " was successful.";
@@ -139,3 +161,4 @@ $_SESSION['message'] = 'Request successful! Payment completed for ' . implode(' 
 $_SESSION['message_type'] = 'success';
 header('Location: request_document.php');
 exit;
+?>

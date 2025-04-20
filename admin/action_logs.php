@@ -192,7 +192,7 @@ $stmt->close();
             <input type="hidden" name="action" value="bulk_delete">
             <div class="records table-responsive">
                 <div class="record-header.remaining">
-                    <div class="add">
+                    <div class="add" style="font-size: 1.2rem; font-weight: bold; color: #2f6003;">
                         <span>All Actions (<?php echo $total_logs; ?> found)</span>
                     </div>
                 </div>

@@ -1,11 +1,11 @@
 <?php
-$page_title = "Request Logs";
+$page_title = "Payment Logs";
 require 'includes/header.php';
 
 // Pagination settings
-$requests_per_page = 10;
+$payments_per_page = 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$offset = ($page - 1) * $requests_per_page;
+$offset = ($page - 1) * $payments_per_page;
 
 // Filter and search settings
 $status_filter = isset($_GET['status']) ? trim($_GET['status']) : 'all';
@@ -14,13 +14,13 @@ $end_date = isset($_GET['end_date']) ? trim($_GET['end_date']) : '';
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
 // Build the WHERE clause
-$where_clauses = ["r.archived = 0"];
+$where_clauses = ["p.archived = 0"];
 $params = [];
 $types = "";
 
 // Search filter
 if ($search) {
-    $where_clauses[] = "(r.document_type LIKE ? OR CONCAT(u.firstname, ' ', u.lastname) LIKE ?)";
+    $where_clauses[] = "(p.description LIKE ? OR p.payment_method LIKE ?)";
     $search_param = "%$search%";
     $params = array_merge($params, [$search_param, $search_param]);
     $types .= "ss";
@@ -28,48 +28,47 @@ if ($search) {
 
 // Status filter
 if ($status_filter !== 'all') {
-    $where_clauses[] = "r.status = ?";
+    $where_clauses[] = "p.payment_status = ?";
     $params[] = $status_filter;
     $types .= "s";
 }
 
 // Start date filter
 if ($start_date) {
-    $where_clauses[] = "DATE(r.requested_date) >= ?";
+    $where_clauses[] = "DATE(p.payment_date) >= ?";
     $params[] = $start_date;
     $types .= "s";
 }
 
 // End date filter
 if ($end_date) {
-    $where_clauses[] = "DATE(r.requested_date) <= ?";
+    $where_clauses[] = "DATE(p.payment_date) <= ?";
     $params[] = $end_date;
     $types .= "s";
 }
 
 $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
 
-// Count total filtered requests
-$count_query = "SELECT COUNT(*) as total FROM requests r JOIN users u ON r.user_id = u.id $where_sql";
+// Count total filtered payments
+$count_query = "SELECT COUNT(*) as total FROM payments p $where_sql";
 $stmt = $conn->prepare($count_query);
 if (!empty($params)) {
     $stmt->bind_param($types, ...$params);
 }
 $stmt->execute();
-$total_requests = $stmt->get_result()->fetch_assoc()['total'];
-$total_pages = $total_requests > 0 ? ceil($total_requests / $requests_per_page) : 1;
+$total_payments = $stmt->get_result()->fetch_assoc()['total'];
+$total_pages = $total_payments > 0 ? ceil($total_payments / $payments_per_page) : 1;
 $page = max(1, min($page, $total_pages));
-$offset = ($page - 1) * $requests_per_page;
+$offset = ($page - 1) * $payments_per_page;
 
-// Fetch paginated requests
-$query = "SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
-                 r.unit_price, r.status, r.requested_date, r.archived, r.file_path, r.remarks, r.rejection_reason 
-          FROM requests r 
-          JOIN users u ON r.user_id = u.id 
+// Fetch paginated payments
+$query = "SELECT p.id, p.request_id, p.payment_method, p.amount, p.payment_status, p.description, 
+                 p.payment_date, p.archived 
+          FROM payments p 
           $where_sql 
-          ORDER BY r.requested_date DESC 
+          ORDER BY p.payment_date DESC 
           LIMIT ? OFFSET ?";
-$params[] = $requests_per_page;
+$params[] = $payments_per_page;
 $params[] = $offset;
 $types .= "ii";
 
@@ -77,24 +76,23 @@ $stmt = $conn->prepare($query);
 $stmt->bind_param($types, ...$params);
 $stmt->execute();
 $result = $stmt->get_result();
-$paginated_requests = [];
+$paginated_payments = [];
 while ($row = $result->fetch_assoc()) {
-    $paginated_requests[] = $row;
+    $paginated_payments[] = $row;
 }
 
-// Fetch archived requests for the modal
-$archived_query = "SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
-                          r.unit_price, r.status, r.requested_date, r.file_path, r.remarks, r.rejection_reason 
-                   FROM requests r 
-                   JOIN users u ON r.user_id = u.id 
-                   WHERE r.archived = 1 
-                   ORDER BY r.requested_date DESC";
+// Fetch archived payments for the modal
+$archived_query = "SELECT p.id, p.request_id, p.payment_method, p.amount, p.payment_status, 
+                          p.description, p.payment_date 
+                   FROM payments p 
+                   WHERE p.archived = 1 
+                   ORDER BY p.payment_date DESC";
 $stmt = $conn->prepare($archived_query);
 $stmt->execute();
 $archived_result = $stmt->get_result();
-$archived_requests = [];
+$archived_payments = [];
 while ($row = $archived_result->fetch_assoc()) {
-    $archived_requests[] = $row;
+    $archived_payments[] = $row;
 }
 ?>
 
@@ -109,24 +107,22 @@ while ($row = $archived_result->fetch_assoc()) {
 
 <main>
     <div class="page-header">
-        <span>Request History</span><br>
-        <small>View and manage the history of all document requests, including rejected ones.</small>
+        <span>Payment History</span><br>
+        <small>View and manage the history of all payment transactions.</small>
     </div>
     <div class="page-content">
         <!-- Filter Form -->
         <div class="mb-3">
-            <form method="GET" action="request_logs.php" class="row g-3" id="filterForm">
+            <form method="GET" action="payment_logs.php" class="row g-3" id="filterForm">
                 <div class="col-md-3">
-                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Search requests..." value="<?php echo htmlspecialchars($search); ?>">
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Search payments..." value="<?php echo htmlspecialchars($search); ?>">
                 </div>
                 <div class="col-md-3">
                     <select name="status" class="form-select form-select-sm">
                         <option value="all" <?php echo $status_filter === 'all' ? 'selected' : ''; ?>>All Statuses</option>
-                        <option value="Pending" <?php echo $status_filter === 'Pending' ? 'selected' : ''; ?>>Pending</option>
-                        <option value="In Process" <?php echo $status_filter === 'In Process' ? 'selected' : ''; ?>>In Process</option>
-                        <option value="Ready to Pickup" <?php echo $status_filter === 'Ready to Pickup' ? 'selected' : ''; ?>>Ready to Pickup</option>
-                        <option value="Completed" <?php echo $status_filter === 'Completed' ? 'selected' : ''; ?>>Completed</option>
-                        <option value="Rejected" <?php echo $status_filter === 'Rejected' ? 'selected' : ''; ?>>Rejected</option>
+                        <option value="PENDING" <?php echo $status_filter === 'PENDING' ? 'selected' : ''; ?>>Pending</option>
+                        <option value="PAID" <?php echo $status_filter === 'PAID' ? 'selected' : ''; ?>>Paid</option>
+                        <option value="FAILED" <?php echo $status_filter === 'FAILED' ? 'selected' : ''; ?>>Failed</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -137,7 +133,7 @@ while ($row = $archived_result->fetch_assoc()) {
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-                    <a href="request_logs.php" class="btn btn-secondary btn-sm">Clear</a>
+                    <a href="payment_logs.php" class="btn btn-secondary btn-sm">Clear</a>
                     <button type="button" class="btn btn-primary btn-sm" style="margin-top: 3px;" data-bs-toggle="modal" data-bs-target="#archiveModal">View Archives</button>
                 </div>
                 <div class="col-12">
@@ -150,10 +146,10 @@ while ($row = $archived_result->fetch_assoc()) {
         <div class="records table-responsive">
             <div class="record-header">
                 <div class="add">
-                    <span>All Requested Documents (<?php echo $total_requests; ?> found)</span>
+                    <span>All Payment Transactions (<?php echo $total_payments; ?> found)</span>
                     <button type="button" class="btn btn-warning btn-sm float-end" onclick="bulkArchive()">Archive Selected</button>
                     <?php if ($_SESSION['role'] === 'admin'): ?>
-                        <button type="button" class="btn btn-danger btn-sm float-end" style="margin-right: 10px;" onclick="bulkDelete()">Delete Selected</button>
+                        <button type="button" class="btn btn-danger btn-sm float-end me-2" onclick="bulkDelete()">Delete Selected</button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -162,60 +158,48 @@ while ($row = $archived_result->fetch_assoc()) {
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th>
-                            <th>ID</th>
-                            <th>Document Type</th>
-                            <th>Student Name</th>
-                            <th>Price</th>
-                            <th>Requested Date</th>
+                            <th>Payment Method</th>
+                            <th>Amount</th>
                             <th>Status</th>
+                            <th>Description</th>
+                            <th>Date Paid</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($paginated_requests)): ?>
+                        <?php if (empty($paginated_payments)): ?>
                             <tr>
-                                <td colspan="8" class="text-center">No requests found.</td>
+                                <td colspan="7" class="text-center">No payments found.</td>
                             </tr>
                         <?php else: ?>
-                            <?php foreach ($paginated_requests as $request): ?>
+                            <?php foreach ($paginated_payments as $payment): ?>
                                 <tr>
                                     <td>
-                                        <input type="checkbox" name="selected_requests[]" value="<?php echo $request['id']; ?>" class="request-checkbox">
+                                        <input type="checkbox" name="selected_payments[]" value="<?php echo $payment['id']; ?>" class="payment-checkbox">
                                     </td>
-                                    <td><?php echo htmlspecialchars($request['id']); ?></td>
-                                    <td><?php echo htmlspecialchars($request['document_type']); ?></td>
-                                    <td><?php echo htmlspecialchars($request['student_name']); ?></td>
-                                    <td>₱<?php echo number_format($request['unit_price'], 2); ?></td>
-                                    <td><?php echo date('F j, Y', strtotime($request['requested_date'])); ?></td>
+                                    <td><?php echo htmlspecialchars($payment['payment_method']); ?></td>
+                                    <td>₱<?php echo number_format($payment['amount'], 2); ?></td>
                                     <td>
                                         <span class="badge <?php
-                                                            switch (strtolower($request['status'])) {
+                                                            switch (strtolower($payment['payment_status'])) {
                                                                 case 'pending':
                                                                     echo 'bg-warning';
                                                                     break;
-                                                                case 'in process':
-                                                                    echo 'bg-info';
-                                                                    break;
-                                                                case 'ready to pickup':
+                                                                case 'paid':
                                                                     echo 'bg-success';
                                                                     break;
-                                                                case 'completed':
-                                                                    echo 'bg-primary';
-                                                                    break;
-                                                                case 'rejected':
+                                                                case 'failed':
                                                                     echo 'bg-danger';
                                                                     break;
                                                             }
                                                             ?>">
-                                            <?php echo htmlspecialchars($request['status']); ?>
+                                            <?php echo htmlspecialchars($payment['payment_status']); ?>
                                         </span>
                                     </td>
+                                    <td><?php echo htmlspecialchars($payment['description']); ?></td>
+                                    <td><?php echo date('F j, Y, h:i A', strtotime($payment['payment_date'])); ?></td>
                                     <td>
-                                        <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
-                                        <button type="button" class="btn btn-warning btn-sm archive-btn" data-id="<?php echo $request['id']; ?>">Archive</button>
-                                        <?php if ($_SESSION['role'] === 'admin'): ?>
-                                            <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>">Delete</button>
-                                        <?php endif; ?>
+                                        <a href="#" class="view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $payment['id']; ?>">View details</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -255,39 +239,31 @@ while ($row = $archived_result->fetch_assoc()) {
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="viewModalLabel">Request Details</h5>
+                <h5 class="modal-title" id="viewModalLabel">Payment Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
-                    <!-- Left Column: Student Info -->
+                    <!-- Left Column: Payment Info -->
                     <div class="col-md-6">
-                        <h6>Student Information</h6>
-                        <p><strong>Name:</strong> <span id="modal-student-name"></span></p>
+                        <h6>Payment Information</h6>
+                        <p><strong>Payment ID:</strong> <span id="modal-payment-id"></span></p>
+                        <p><strong>Request ID:</strong> <span id="modal-request-id"></span></p>
+                        <p><strong>Payment Method:</strong> <span id="modal-payment-method"></span></p>
+                        <p><strong>Amount:</strong> <span id="modal-amount"></span></p>
+                        <p><strong>Status:</strong> <span id="modal-payment-status"></span></p>
+                        <p><strong>Description:</strong> <span id="modal-description"></span></p>
+                        <p><strong>Date Paid:</strong> <span id="modal-payment-date"></span></p>
+                    </div>
+                    <!-- Right Column: Associated Request Info -->
+                    <div class="col-md-6">
+                        <h6>Associated Request Information</h6>
+                        <p><strong>Student Name:</strong> <span id="modal-student-name"></span></p>
                         <p><strong>Email:</strong> <span id="modal-email"></span></p>
                         <p><strong>Contact Number:</strong> <span id="modal-number"></span></p>
-                        <p><strong>Course:</strong> <span id="modal-course"></span></p>
-                        <p><strong>Section:</strong> <span id="modal-section"></span></p>
-                        <p><strong>School Year:</strong> <span id="modal-school-year"></span></p>
-                        <p><strong>Year Level:</strong> <span id="modal-year-level"></span></p>
-                    </div>
-                    <!-- Right Column: Request Info -->
-                    <div class="col-md-6">
-                        <h6>Request Information</h6>
-                        <p><strong>ID:</strong> <span id="modal-id"></span></p>
                         <p><strong>Document Type:</strong> <span id="modal-document-type"></span></p>
-                        <p><strong>Price:</strong> <span id="modal-price"></span></p>
+                        <p><strong>Request Status:</strong> <span id="modal-request-status"></span></p>
                         <p><strong>Requested Date:</strong> <span id="modal-requested-date"></span></p>
-                        <p><strong>Status:</strong> <span id="modal-status"></span></p>
-                        <p><strong>Payment Status:</strong> <span id="modal-payment-status"></span></p>
-                        <p><strong>Reason for Request:</strong> <span id="modal-remarks"></span></p>
-                        <p><strong>Uploaded File:</strong> <span id="modal-file"></span></p>
-                        <p><strong>Rejection Reason:</strong> <span id="modal-rejection-reason"></span></p>
-                        <p><strong>QR Code:</strong></p>
-                        <div id="modal-qr-code" style="display: none; text-align: center;">
-                            <div id="qr-code-canvas"></div>
-                            <button type="button" class="btn btn-primary btn-sm mt-2" onclick="downloadQRCode()">Download QR Code</button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -303,63 +279,55 @@ while ($row = $archived_result->fetch_assoc()) {
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="archiveModalLabel">Archived Requests</h5>
+                <h5 class="modal-title" id="archiveModalLabel">Archived Payments</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Document Type</th>
-                            <th>Student Name</th>
-                            <th>Price</th>
-                            <th>Requested Date</th>
+                            <th>Payment Method</th>
+                            <th>Amount</th>
                             <th>Status</th>
+                            <th>Description</th>
+                            <th>Date Paid</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($archived_requests)): ?>
+                        <?php if (empty($archived_payments)): ?>
                             <tr>
-                                <td colspan="7" class="text-center">No archived requests found.</td>
+                                <td colspan="6" class="text-center">No archived payments found.</td>
                             </tr>
                         <?php else: ?>
-                            <?php foreach ($archived_requests as $request): ?>
+                            <?php foreach ($archived_payments as $payment): ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($request['id']); ?></td>
-                                    <td><?php echo htmlspecialchars($request['document_type']); ?></td>
-                                    <td><?php echo htmlspecialchars($request['student_name']); ?></td>
-                                    <td>₱<?php echo number_format($request['unit_price'], 2); ?></td>
-                                    <td><?php echo date('F j, Y', strtotime($request['requested_date'])); ?></td>
+                                    <td><?php echo htmlspecialchars($payment['payment_method']); ?></td>
+                                    <td>₱<?php echo number_format($payment['amount'], 2); ?></td>
                                     <td>
                                         <span class="badge <?php
-                                                            switch (strtolower($request['status'])) {
+                                                            switch (strtolower($payment['payment_status'])) {
                                                                 case 'pending':
                                                                     echo 'bg-warning';
                                                                     break;
-                                                                case 'in process':
-                                                                    echo 'bg-info';
-                                                                    break;
-                                                                case 'ready to pickup':
+                                                                case 'paid':
                                                                     echo 'bg-success';
                                                                     break;
-                                                                case 'completed':
-                                                                    echo 'bg-primary';
-                                                                    break;
-                                                                case 'rejected':
+                                                                case 'failed':
                                                                     echo 'bg-danger';
                                                                     break;
                                                             }
                                                             ?>">
-                                            <?php echo htmlspecialchars($request['status']); ?>
+                                            <?php echo htmlspecialchars($payment['payment_status']); ?>
                                         </span>
                                     </td>
+                                    <td><?php echo htmlspecialchars($payment['description']); ?></td>
+                                    <td><?php echo date('F j, Y, h:i A', strtotime($payment['payment_date'])); ?></td>
                                     <td>
-                                        <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
-                                        <button type="button" class="btn btn-success btn-sm retrieve-btn" data-id="<?php echo $request['id']; ?>">Retrieve</button>
+                                        <a href="#" class="view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $payment['id']; ?>">View details</a>
+                                        <button type="button" class="btn btn-success btn-sm retrieve-btn" data-id="<?php echo $payment['id']; ?>">Retrieve</button>
                                         <?php if ($_SESSION['role'] === 'admin'): ?>
-                                            <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>">Delete</button>
+                                            <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $payment['id']; ?>">Delete</button>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -375,12 +343,11 @@ while ($row = $archived_result->fetch_assoc()) {
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
     // Toggle all checkboxes
     function toggleSelectAll() {
         const selectAll = document.getElementById('select-all');
-        const checkboxes = document.querySelectorAll('.request-checkbox');
+        const checkboxes = document.querySelectorAll('.payment-checkbox');
         checkboxes.forEach(checkbox => checkbox.checked = selectAll.checked);
     }
 
@@ -406,17 +373,17 @@ while ($row = $archived_result->fetch_assoc()) {
         if (processingDiv) processingDiv.remove();
     }
 
-    // Bulk archive selected requests
+    // Bulk archive selected payments
     function bulkArchive() {
-        const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
+        const selected = Array.from(document.querySelectorAll('.payment-checkbox:checked'))
             .map(checkbox => checkbox.value);
         if (selected.length === 0) {
-            alert('Please select at least one request to archive.');
+            alert('Please select at least one payment to archive.');
             return;
         }
-        if (confirm(`Archive ${selected.length} selected request(s)?`)) {
-            showProcessingMessage('Archiving requests... Please wait.');
-            fetch('request_actions.php', {
+        if (confirm(`Archive ${selected.length} selected payment(s)?`)) {
+            showProcessingMessage('Archiving payments... Please wait.');
+            fetch('payment_actions.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
@@ -434,23 +401,23 @@ while ($row = $archived_result->fetch_assoc()) {
                 })
                 .catch(error => {
                     hideProcessingMessage();
-                    alert('Failed to archive requests: ' + error.message);
+                    alert('Failed to archive payments: ' + error.message);
                 });
         }
     }
 
     <?php if ($_SESSION['role'] === 'admin'): ?>
-        // Bulk delete selected requests
+        // Bulk delete selected payments
         function bulkDelete() {
-            const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
+            const selected = Array.from(document.querySelectorAll('.payment-checkbox:checked'))
                 .map(checkbox => checkbox.value);
             if (selected.length === 0) {
-                alert('Please select at least one request to delete.');
+                alert('Please select at least one payment to delete.');
                 return;
             }
-            if (confirm(`Delete ${selected.length} selected request(s)? This action cannot be undone.`)) {
-                showProcessingMessage('Deleting requests... Please wait.');
-                fetch('request_actions.php', {
+            if (confirm(`Delete ${selected.length} selected payment(s)? This action cannot be undone.`)) {
+                showProcessingMessage('Deleting payments... Please wait.');
+                fetch('payment_actions.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded'
@@ -468,7 +435,7 @@ while ($row = $archived_result->fetch_assoc()) {
                     })
                     .catch(error => {
                         hideProcessingMessage();
-                        alert('Failed to delete requests: ' + error.message);
+                        alert('Failed to delete payments: ' + error.message);
                     });
             }
         }
@@ -477,15 +444,15 @@ while ($row = $archived_result->fetch_assoc()) {
     // Individual archive function
     document.querySelectorAll('.archive-btn').forEach(button => {
         button.addEventListener('click', function() {
-            const requestId = this.dataset.id;
-            if (confirm(`Archive request ID: ${requestId}?`)) {
-                showProcessingMessage('Archiving request... Please wait.');
-                fetch('request_actions.php', {
+            const paymentId = this.dataset.id;
+            if (confirm(`Archive payment ID: ${paymentId}?`)) {
+                showProcessingMessage('Archiving payment... Please wait.');
+                fetch('payment_actions.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded'
                         },
-                        body: `action=archive&id=${requestId}`
+                        body: `action=archive&id=${paymentId}`
                     })
                     .then(response => response.json())
                     .then(data => {
@@ -498,7 +465,7 @@ while ($row = $archived_result->fetch_assoc()) {
                     })
                     .catch(error => {
                         hideProcessingMessage();
-                        alert('Failed to archive request: ' + error.message);
+                        alert('Failed to archive payment: ' + error.message);
                     });
             }
         });
@@ -508,15 +475,15 @@ while ($row = $archived_result->fetch_assoc()) {
         // Individual delete function
         document.querySelectorAll('.delete-btn').forEach(button => {
             button.addEventListener('click', function() {
-                const requestId = this.dataset.id;
-                if (confirm(`Delete request ID: ${requestId}? This action cannot be undone.`)) {
-                    showProcessingMessage('Deleting request... Please wait.');
-                    fetch('request_actions.php', {
+                const paymentId = this.dataset.id;
+                if (confirm(`Delete payment ID: ${paymentId}? This action cannot be undone.`)) {
+                    showProcessingMessage('Deleting payment... Please wait.');
+                    fetch('payment_actions.php', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded'
                             },
-                            body: `action=delete&id=${requestId}`
+                            body: `action=delete&id=${paymentId}`
                         })
                         .then(response => response.json())
                         .then(data => {
@@ -529,25 +496,25 @@ while ($row = $archived_result->fetch_assoc()) {
                         })
                         .catch(error => {
                             hideProcessingMessage();
-                            alert('Failed to delete request: ' + error.message);
+                            alert('Failed to delete payment: ' + error.message);
                         });
                 }
             });
         });
     <?php endif; ?>
 
-    // Retrieve (unarchive) a request
+    // Retrieve (unarchive) a payment
     document.querySelectorAll('.retrieve-btn').forEach(button => {
         button.addEventListener('click', function() {
-            const requestId = this.dataset.id;
-            if (confirm(`Retrieve request ID: ${requestId} from archive?`)) {
-                showProcessingMessage('Retrieving request... Please wait.');
-                fetch('request_actions.php', {
+            const paymentId = this.dataset.id;
+            if (confirm(`Retrieve payment ID: ${paymentId} from archive?`)) {
+                showProcessingMessage('Retrieving payment... Please wait.');
+                fetch('payment_actions.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded'
                         },
-                        body: `action=retrieve&id=${requestId}`
+                        body: `action=retrieve&id=${paymentId}`
                     })
                     .then(response => response.json())
                     .then(data => {
@@ -560,7 +527,7 @@ while ($row = $archived_result->fetch_assoc()) {
                     })
                     .catch(error => {
                         hideProcessingMessage();
-                        alert('Failed to retrieve request: ' + error.message);
+                        alert('Failed to retrieve payment: ' + error.message);
                     });
             }
         });
@@ -570,57 +537,43 @@ while ($row = $archived_result->fetch_assoc()) {
     document.querySelectorAll('.view-btn').forEach(button => {
         button.addEventListener('click', function() {
             const id = this.dataset.id;
-            fetch(`request_actions.php?action=get&id=${id}`)
+            fetch(`payment_actions.php?action=get&id=${id}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        const request = data.data;
-                        // Student Information
-                        document.getElementById('modal-student-name').textContent = request.student_name;
+                        const payment = data.payment;
+                        const request = data.request;
+                        // Payment Information
+                        document.getElementById('modal-payment-id').textContent = payment.id;
+                        document.getElementById('modal-request-id').textContent = payment.request_id;
+                        document.getElementById('modal-payment-method').textContent = payment.payment_method;
+                        document.getElementById('modal-amount').textContent = '₱' + parseFloat(payment.amount).toFixed(2);
+                        document.getElementById('modal-payment-status').textContent = payment.payment_status;
+                        document.getElementById('modal-description').textContent = payment.description;
+                        document.getElementById('modal-payment-date').textContent = new Date(payment.payment_date).toLocaleString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: 'numeric',
+                            hour12: true
+                        });
+                        // Associated Request Information
+                        document.getElementById('modal-student-name').textContent = request.student_name || 'N/A';
                         document.getElementById('modal-email').textContent = request.email || 'N/A';
                         document.getElementById('modal-number').textContent = request.number || 'N/A';
-                        document.getElementById('modal-course').textContent = request.course_name || 'N/A';
-                        document.getElementById('modal-section').textContent = request.section_name || 'N/A';
-                        document.getElementById('modal-school-year').textContent = request.school_year || 'N/A';
-                        document.getElementById('modal-year-level').textContent = request.year_level || 'N/A';
-                        // Request Information
-                        document.getElementById('modal-id').textContent = request.id;
-                        document.getElementById('modal-document-type').textContent = request.document_type;
-                        document.getElementById('modal-price').textContent = '₱' + parseFloat(request.unit_price).toFixed(2);
-                        document.getElementById('modal-requested-date').textContent = new Date(request.requested_date).toLocaleDateString('en-US', {
+                        document.getElementById('modal-document-type').textContent = request.document_type || 'N/A';
+                        document.getElementById('modal-request-status').textContent = request.status || 'N/A';
+                        document.getElementById('modal-requested-date').textContent = request.requested_date ? new Date(request.requested_date).toLocaleDateString('en-US', {
                             month: 'long',
                             day: 'numeric',
                             year: 'numeric'
-                        });
-                        document.getElementById('modal-status').textContent = request.status;
-                        document.getElementById('modal-payment-status').textContent = request.payment_status || 'N/A';
-                        document.getElementById('modal-remarks').textContent = request.remarks || 'N/A';
-                        const fileSpan = document.getElementById('modal-file');
-                        if (request.file_path) {
-                            fileSpan.innerHTML = `<a href="../${request.file_path}" target="_blank" download>Download File</a>`;
-                        } else {
-                            fileSpan.textContent = 'No file uploaded';
-                        }
-                        document.getElementById('modal-rejection-reason').textContent = request.rejection_reason || 'N/A';
-                        // QR Code
-                        const qrCodeDiv = document.getElementById('modal-qr-code');
-                        const qrCodeCanvas = document.getElementById('qr-code-canvas');
-                        qrCodeCanvas.innerHTML = ''; // Clear previous QR code
-                        if (request.status === 'Ready to Pickup') {
-                            qrCodeDiv.style.display = 'block';
-                            new QRCode(qrCodeCanvas, {
-                                text: `request_id:${request.id}`,
-                                width: 150,
-                                height: 150
-                            });
-                        } else {
-                            qrCodeDiv.style.display = 'none';
-                        }
+                        }) : 'N/A';
                     } else {
                         alert('Error: ' + data.message);
                     }
                 })
-                .catch(error => alert('Failed to load request details: ' + error.message));
+                .catch(error => alert('Failed to load payment details: ' + error.message));
         });
     });
 
@@ -658,17 +611,6 @@ while ($row = $archived_result->fetch_assoc()) {
             dateError.style.display = 'none';
         });
     });
-
-    // Download QR Code
-    function downloadQRCode() {
-        const qrCanvas = document.querySelector('#qr-code-canvas canvas');
-        if (qrCanvas) {
-            const link = document.createElement('a');
-            link.href = qrCanvas.toDataURL('image/png');
-            link.download = `request_qr_${document.getElementById('modal-id').textContent}.png`;
-            link.click();
-        }
-    }
 </script>
 
 <?php require 'includes/footer.php'; ?>

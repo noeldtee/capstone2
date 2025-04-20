@@ -9,38 +9,44 @@
             <ul class="container">
                 <li>
                     <a href="dashboard.php" class="<?php echo (isset($page_title) && $page_title === 'Admin Dashboard') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-chart-line"></i>
+                        <i class="fa-solid fa-house"></i>
                         <small>Dashboard</small>
                     </a>
                 </li>
                 <li>
                     <a href="request.php" class="<?php echo (isset($page_title) && $page_title === 'Document Request Management') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-list-check"></i>
+                        <i class="fa-solid fa-file-signature"></i>
                         <small>Request Management</small>
                     </a>
                 </li>
                 <li>
                     <a href="request_logs.php" class="<?php echo (isset($page_title) && $page_title === 'Request Logs') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <i class="fa-solid fa-history"></i>
                         <small>Request Logs</small>
+                    </a>
+                </li>
+                <li>
+                    <a href="payment_logs.php" class="<?php echo (isset($page_title) && $page_title === 'Payment Logs') ? 'active' : ''; ?>">
+                        <i class="fa-solid fa-money-check-alt"></i>
+                        <small>Payment Logs</small>
                     </a>
                 </li>
                 <!-- Settings with Bootstrap Dropdown -->
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Document Management', 'Academic Management', 'Users Management'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fa-solid fa-gear"></i>
+                        <i class="fa-solid fa-cogs"></i>
                         <small>Management</small>
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="settingsDropdown">
                         <li>
                             <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Document Management') ? 'active' : ''; ?>" href="documents.php">
-                                <i class="fa-solid fa-folder-open me-2"></i>
+                                <i class="fa-solid fa-file-alt me-2"></i>
                                 Document Management
                             </a>
                         </li>
                         <li>
                             <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Academic Management') ? 'active' : ''; ?>" href="sections.php">
-                                <i class="fa-solid fa-layer-group me-2"></i>
+                                <i class="fa-solid fa-school me-2"></i>
                                 Academic Management
                             </a>
                         </li>
@@ -61,13 +67,13 @@
                         <ul class="dropdown-menu" aria-labelledby="settingsDropdown">
                             <li>
                                 <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Action Logs') ? 'active' : ''; ?>" href="action_logs.php">
-                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                    <i class="fa-solid fa-history"></i>
                                     Action Logs
                                 </a>
                             </li>
                             <li>
                                 <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Settings - Terms and Conditions') ? 'active' : ''; ?>" href="settings.php">
-                                    <i class="fa-solid fa-gear"></i>
+                                    <i class="fa-solid fa-file-contract"></i>
                                     Terms and Conditions
                                 </a>
                             </li>

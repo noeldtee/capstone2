@@ -10,6 +10,7 @@ $offset = ($page - 1) * $limit;
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $role_filter = isset($_GET['role']) ? trim($_GET['role']) : '';
 $status_filter = isset($_GET['status']) ? trim($_GET['status']) : '';
+$verify_filter = isset($_GET['verify_status']) ? trim($_GET['verify_status']) : ''; // New filter for verification status
 
 $sort_by = isset($_GET['sort_by']) ? trim($_GET['sort_by']) : 'full_name';
 $sort_order = isset($_GET['sort_order']) && in_array(strtoupper($_GET['sort_order']), ['ASC', 'DESC']) ? strtoupper($_GET['sort_order']) : 'ASC';
@@ -34,6 +35,12 @@ if ($role_filter && in_array($role_filter, ['student', 'alumni'])) {
 if ($status_filter !== '' && in_array($status_filter, ['0', '1'])) {
     $where_clauses[] = "u.is_ban = ?";
     $params[] = (int)$status_filter;
+    $param_types .= "i";
+}
+
+if ($verify_filter !== '' && in_array($verify_filter, ['0', '1'])) {
+    $where_clauses[] = "u.verify_status = ?";
+    $params[] = (int)$verify_filter;
     $param_types .= "i";
 }
 
@@ -81,7 +88,7 @@ $total_pages = $total_users > 0 ? ceil($total_users / $limit) : 1;
 $page = max(1, min($page, $total_pages));
 $offset = ($page - 1) * $limit;
 
-// Fetch users
+// Fetch users (include verify_status in the query)
 $query = "SELECT u.*, CONCAT(u.firstname, ' ', COALESCE(u.middlename, ''), ' ', u.lastname) AS full_name, s.section AS section_name, c.name AS course_name, sy.year AS school_year 
           FROM users u LEFT JOIN sections s ON u.section_id = s.id LEFT JOIN courses c ON u.course_id = c.id LEFT JOIN school_years sy ON u.year_id = sy.id 
           $where_sql ORDER BY $sort_by $sort_order LIMIT ? OFFSET ?";
@@ -147,6 +154,13 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                     </select>
                 </div>
                 <div class="col-md-2">
+                    <select name="verify_status" class="form-select form-select-sm">
+                        <option value="">All Verification Statuses</option>
+                        <option value="1" <?php echo $verify_filter === '1' ? 'selected' : ''; ?>>Verified</option>
+                        <option value="0" <?php echo $verify_filter === '0' ? 'selected' : ''; ?>>Not Verified</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <button type="submit" class="btn btn-primary btn-sm">Filter</button>
                     <a href="students.php" class="btn btn-secondary btn-sm">Clear</a>
                 </div>
@@ -175,12 +189,13 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                             <th>School Year</th>
                             <th>Year Level</th>
                             <th>Status</th>
+                            <th>Verification Status</th> <!-- New Column -->
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($users)): ?>
-                            <tr><td colspan="11" class="text-center">No users found.</td></tr>
+                            <tr><td colspan="12" class="text-center">No users found.</td></tr>
                         <?php else: ?>
                             <?php foreach ($users as $user): ?>
                                 <tr>
@@ -194,10 +209,13 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                                     <td><?php echo htmlspecialchars($user['school_year'] ?? 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($user['year_level']); ?></td>
                                     <td><span class="badge <?php echo $user['is_ban'] == 0 ? 'bg-success' : 'bg-danger'; ?>"><?php echo $user['is_ban'] == 0 ? 'Active' : 'Inactive'; ?></span></td>
+                                    <td><span class="badge <?php echo $user['verify_status'] == 1 ? 'bg-success' : 'bg-warning'; ?>"><?php echo $user['verify_status'] == 1 ? 'Verified' : 'Not Verified'; ?></span></td>
                                     <td>
-                                        <button type="button" class="btn btn-primary btn-sm edit-user-btn" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<?php echo $user['id']; ?>">Edit</button>
                                         <?php if ($_SESSION['role'] === 'admin'): ?>
+                                            <button type="button" class="btn btn-primary btn-sm edit-user-btn" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<?php echo $user['id']; ?>">Edit</button>
                                             <button type="button" class="btn btn-danger btn-sm delete-user-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="<?php echo $user['id']; ?>">Delete</button>
+                                        <?php else: ?>
+                                            <button type="button" class="btn btn-primary btn-sm view-user-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $user['id']; ?>">View</button>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -234,7 +252,8 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                     <input type="hidden" name="action" value="add">
                     <div class="mb-3">
                         <label for="addStudentId" class="form-label">Student/Alumni ID</label>
-                        <input type="text" class="form-control" id="addStudentId" name="studentid" required placeholder="e.g., STU001">
+                        <input type="text" class="form-control" id="addStudentId" name="studentid" required placeholder="e.g., MA1231232">
+                        <small class="form-text text-muted">Must start with "MA" followed by numbers (e.g., MA1231232).</small>
                     </div>
                     <div class="mb-3">
                         <label for="addFirstName" class="form-label">First Name</label>
@@ -251,6 +270,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                     <div class="mb-3">
                         <label for="addEmail" class="form-label">Email</label>
                         <input type="email" class="form-control" id="addEmail" name="email" required>
+                        <small class="form-text text-muted">A verification email will be sent to this address.</small>
                     </div>
                     <div class="mb-3">
                         <label for="addPassword" class="form-label">Password</label>
@@ -318,7 +338,79 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
     </div>
 </div>
 
-<!-- Edit User Modal -->
+<!-- View User Modal (for Registrar) -->
+<div class="modal fade" id="viewModal" tabindex="-1" aria-labelledby="viewModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewModalLabel">View User Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="viewUserDetails">
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Student/Alumni ID:</strong></label>
+                        <p id="viewStudentId"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>First Name:</strong></label>
+                        <p id="viewFirstName"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Middle Name:</strong></label>
+                        <p id="viewMiddleName"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Last Name:</strong></label>
+                        <p id="viewLastName"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Email:</strong></label>
+                        <p id="viewEmail"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>School Year:</strong></label>
+                        <p id="viewSchoolYear"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Course:</strong></label>
+                        <p id="viewCourse"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Year Level:</strong></label>
+                        <p id="viewYearLevel"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Section:</strong></label>
+                        <p id="viewSection"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Role:</strong></label>
+                        <p id="viewRole"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Status:</strong></label>
+                        <p id="viewIsBan"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Verification Status:</strong></label>
+                        <p id="viewVerifyStatus"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Terms Accepted:</strong></label>
+                        <p id="viewTerms"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal (for Admin only) -->
+<?php if ($_SESSION['role'] === 'admin'): ?>
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -333,6 +425,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                     <div class="mb-3">
                         <label for="editStudentId" class="form-label">Student/Alumni ID</label>
                         <input type="text" class="form-control" id="editStudentId" name="studentid" required>
+                        <small class="form-text text-muted">Must start with "MA" followed by numbers (e.g., MA1231232).</small>
                     </div>
                     <div class="mb-3">
                         <label for="editFirstName" class="form-label">First Name</label>
@@ -416,8 +509,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
     </div>
 </div>
 
-<?php if ($_SESSION['role'] === 'admin'): ?>
-<!-- Delete Confirmation Modal -->
+<!-- Delete Confirmation Modal (for Admin only) -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -489,6 +581,129 @@ document.getElementById('addSchoolYear').addEventListener('change', function () 
     section.innerHTML = '<option value="">Select Section</option>';
 });
 
+// Client-side validation for Student ID (must start with "MA")
+document.getElementById('addUserForm').addEventListener('submit', function (e) {
+    const studentIdInput = document.getElementById('addStudentId');
+    const studentId = studentIdInput.value.trim();
+    const studentIdPattern = /^MA[0-9]+$/;
+    if (!studentIdPattern.test(studentId)) {
+        e.preventDefault();
+        alert('Student ID must start with "MA" followed by numbers (e.g., MA1231232).');
+        studentIdInput.focus();
+    }
+});
+
+// Client-side validation for Edit User Modal
+document.getElementById('editUserForm').addEventListener('submit', function (e) {
+    const studentIdInput = document.getElementById('editStudentId');
+    const studentId = studentIdInput.value.trim();
+    const studentIdPattern = /^MA[0-9]+$/;
+    if (!studentIdPattern.test(studentId)) {
+        e.preventDefault();
+        alert('Student ID must start with "MA" followed by numbers (e.g., MA1231232).');
+        studentIdInput.focus();
+    }
+});
+
+// Fetch Sections via AJAX
+function fetchSections(selectElement, courseId, schoolYearId, selectedSectionId) {
+    fetch(`./student_actions.php?action=get_sections&course_id=${courseId}&school_year_id=${schoolYearId}`)
+        .then(response => response.json())
+        .then(data => {
+            selectElement.innerHTML = '<option value="">Select Section</option>';
+            if (data.status === 200 && data.data.length > 0) {
+                data.data.forEach(section => {
+                    const option = document.createElement('option');
+                    option.value = section.id;
+                    option.textContent = `${section.section} (${section.course_name}, ${section.school_year})`;
+                    if (selectedSectionId && section.id == selectedSectionId) {
+                        option.selected = true;
+                    }
+                    selectElement.appendChild(option);
+                });
+            } else {
+                selectElement.innerHTML = '<option value="">No sections available</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching sections:', error);
+            selectElement.innerHTML = '<option value="">Error loading sections</option>';
+        });
+}
+
+// Populate View User Modal (for Registrar)
+document.querySelectorAll('.view-user-btn').forEach(button => {
+    button.addEventListener('click', function () {
+        const modal = document.getElementById('viewModal');
+        const modalBody = modal.querySelector('.modal-body');
+        const details = document.getElementById('viewUserDetails');
+
+        const spinner = document.createElement('div');
+        spinner.className = 'text-center';
+        spinner.innerHTML = '<div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>';
+
+        details.style.display = 'none';
+        modalBody.appendChild(spinner);
+
+        const id = this.dataset.id;
+        fetch('./student_actions.php?action=get&id=' + id)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.statusText);
+                }
+                return response.text().then(text => {
+                    console.log('Raw response text:', text);
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        throw new Error('Invalid JSON: ' + e.message + '\nResponse: ' + text);
+                    }
+                });
+            })
+            .then(data => {
+                console.log('Parsed JSON:', data);
+                if (data.status === 200) {
+                    const user = data.data;
+                    document.getElementById('viewStudentId').textContent = user.studentid || 'N/A';
+                    document.getElementById('viewFirstName').textContent = user.firstname || 'N/A';
+                    document.getElementById('viewMiddleName').textContent = user.middlename || 'N/A';
+                    document.getElementById('viewLastName').textContent = user.lastname || 'N/A';
+                    document.getElementById('viewEmail').textContent = user.email || 'N/A';
+
+                    // Fetch school year name
+                    const schoolYear = <?php echo json_encode($school_years); ?>;
+                    document.getElementById('viewSchoolYear').textContent = user.year_id && schoolYear[user.year_id] ? schoolYear[user.year_id].year : 'N/A';
+
+                    // Fetch course name
+                    const courses = <?php echo json_encode($courses); ?>;
+                    document.getElementById('viewCourse').textContent = user.course_id && courses[user.course_id] ? courses[user.course_id].name : 'N/A';
+
+                    document.getElementById('viewYearLevel').textContent = user.year_level || 'N/A';
+
+                    // Fetch section name
+                    const sections = <?php echo json_encode($sections); ?>;
+                    document.getElementById('viewSection').textContent = user.section_id && sections[user.section_id] ? sections[user.section_id].section : 'N/A';
+
+                    document.getElementById('viewRole').textContent = user.role || 'N/A';
+                    document.getElementById('viewIsBan').textContent = user.is_ban == 0 ? 'Active' : 'Inactive';
+                    document.getElementById('viewVerifyStatus').textContent = user.verify_status == 1 ? 'Verified' : 'Not Verified';
+                    document.getElementById('viewTerms').textContent = user.terms == 1 ? 'Yes' : 'No';
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching user data:', error);
+                alert('Failed to load user data: ' + error.message);
+            })
+            .finally(() => {
+                modalBody.removeChild(spinner);
+                details.style.display = 'block';
+            });
+    });
+});
+
+<?php if ($_SESSION['role'] === 'admin'): ?>
 // Edit User Modal Logic
 document.getElementById('editCourse').addEventListener('change', function () {
     const yearLevelGroup = document.getElementById('editYearLevelGroup');
@@ -536,32 +751,6 @@ document.getElementById('editSchoolYear').addEventListener('change', function ()
     section.innerHTML = '<option value="">Select Section</option>';
 });
 
-// Fetch Sections via AJAX
-function fetchSections(selectElement, courseId, schoolYearId, selectedSectionId) {
-    fetch(`./student_actions.php?action=get_sections&course_id=${courseId}&school_year_id=${schoolYearId}`)
-        .then(response => response.json())
-        .then(data => {
-            selectElement.innerHTML = '<option value="">Select Section</option>';
-            if (data.status === 200 && data.data.length > 0) {
-                data.data.forEach(section => {
-                    const option = document.createElement('option');
-                    option.value = section.id;
-                    option.textContent = `${section.section} (${section.course_name}, ${section.school_year})`;
-                    if (selectedSectionId && section.id == selectedSectionId) {
-                        option.selected = true;
-                    }
-                    selectElement.appendChild(option);
-                });
-            } else {
-                selectElement.innerHTML = '<option value="">No sections available</option>';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching sections:', error);
-            selectElement.innerHTML = '<option value="">Error loading sections</option>';
-        });
-}
-
 // Populate Edit User Modal
 document.querySelectorAll('.edit-user-btn').forEach(button => {
     button.addEventListener('click', function () {
@@ -608,6 +797,7 @@ document.querySelectorAll('.edit-user-btn').forEach(button => {
                     document.getElementById('editYearLevel').value = user.year_level || '';
                     document.getElementById('editRole').value = user.role;
                     document.getElementById('editIsBan').value = user.is_ban;
+                    document.getElementWithId('editVerifyStatus').value = user.verify_status;
                     document.getElementById('editTerms').checked = user.terms == 1;
 
                     if (user.course_id) {
@@ -639,7 +829,6 @@ document.querySelectorAll('.edit-user-btn').forEach(button => {
     });
 });
 
-<?php if ($_SESSION['role'] === 'admin'): ?>
 // Populate Delete User Modal
 document.querySelectorAll('.delete-user-btn').forEach(button => {
     button.addEventListener('click', function () {

@@ -9,25 +9,25 @@
             <ul class="container">
                 <li>
                     <a href="dashboard.php" class="<?php echo (isset($page_title) && $page_title === 'Student Dashboard') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-chart-line"></i>
+                        <i class="fa-solid fa-house"></i>
                         <small>Dashboard</small>
                     </a>
                 </li>
                 <li>
                     <a href="request_document.php" class="<?php echo (isset($page_title) && $page_title === 'Request Document') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-list-check"></i>
+                        <i class="fa-solid fa-file-signature"></i>
                         <small>Request Document</small>
                     </a>
                 </li>
                 <li>
                     <a href="history.php" class="<?php echo (isset($page_title) && $page_title === 'Request History') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-folder-open"></i>
+                        <i class="fa-solid fa-history"></i>
                         <small>History</small>
                     </a>
                 </li>
                 <li>
                     <a href="settings.php" class="<?php echo (isset($page_title) && $page_title === 'Settings') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <i class="fa-solid fa-gear"></i>
                         <small>Settings</small>
                     </a>
                 </li>

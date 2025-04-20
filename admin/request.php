@@ -120,10 +120,8 @@ while ($row = $result->fetch_assoc()) {
             <div class="record-header">
                 <div class="add">
                     <span>All Document Requests (<?php echo $total_requests; ?> found)</span>
-                </div>
-                <div class="bulk-actions">
-                    <div class="dropdown">
-                        <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="bulkActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <button class="btn btn-primary btn-sm dropdown-toggle float-end" type="button" id="bulkActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
                             Bulk Actions
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="bulkActionsDropdown">
@@ -132,7 +130,6 @@ while ($row = $result->fetch_assoc()) {
                             <li><a class="dropdown-item" href="#" onclick="bulkMarkCompleted(); return false;">Mark Ready as Completed</a></li>
                             <li><a class="dropdown-item text-danger" href="#" onclick="bulkReject(); return false;">Reject Pending</a></li>
                         </ul>
-                    </div>
                 </div>
             </div>
             <form id="bulk-form">
@@ -177,12 +174,24 @@ while ($row = $result->fetch_assoc()) {
                                     <td>
                                         <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
                                         <?php if ($request['status'] === 'Pending'): ?>
-                                            <button type="button" class="btn btn-success btn-sm" onclick="approveRequest(<?php echo $request['id']; ?>)">Approve</button>
-                                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal" data-id="<?php echo $request['id']; ?>">Reject</button>
+                                            <button type="button" class="btn btn-success btn-sm approve-btn" onclick="approveRequest(<?php echo $request['id']; ?>, this)">
+                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                                                Approve
+                                            </button>
+                                            <button type="button" class="btn btn-danger btn-sm reject-btn" data-bs-toggle="modal" data-bs-target="#rejectModal" data-id="<?php echo $request['id']; ?>">
+                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                                                Reject
+                                            </button>
                                         <?php elseif ($request['status'] === 'In Process'): ?>
-                                            <button type="button" class="btn btn-success btn-sm" onclick="markReady(<?php echo $request['id']; ?>)">Mark Ready</button>
+                                            <button type="button" class="btn btn-success btn-sm mark-ready-btn" onclick="markReady(<?php echo $request['id']; ?>, this)">
+                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                                                Mark Ready
+                                            </button>
                                         <?php elseif ($request['status'] === 'Ready to Pickup'): ?>
-                                            <button type="button" class="btn btn-primary btn-sm" onclick="markCompleted(<?php echo $request['id']; ?>)">Mark Completed</button>
+                                            <button type="button" class="btn btn-primary btn-sm mark-completed-btn" onclick="markCompleted(<?php echo $request['id']; ?>, this)">
+                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                                                Mark Completed
+                                            </button>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -220,24 +229,48 @@ while ($row = $result->fetch_assoc()) {
 
 <!-- View Modal -->
 <div class="modal fade" id="viewModal" tabindex="-1" aria-labelledby="viewModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="viewModalLabel">Request Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p><strong>ID:</strong> <span id="modal-id"></span></p>
-                <p><strong>Document Type:</strong> <span id="modal-document-type"></span></p>
-                <p><strong>Student Name:</strong> <span id="modal-student-name"></span></p>
-                <p><strong>Price:</strong> <span id="modal-price"></span></p>
-                <p><strong>Requested Date:</strong> <span id="modal-requested-date"></span></p>
-                <p><strong>Status:</strong> <span id="modal-status"></span></p>
-                <p><strong>Reason for Request:</strong> <span id="modal-remarks"></span></p>
-                <p><strong>Uploaded File:</strong> <span id="modal-file"></span></p>
+                <div class="row">
+                    <!-- Left Column: Student Info -->
+                    <div class="col-md-6">
+                        <h6>Student Information</h6>
+                        <p><strong>Name:</strong> <span id="modal-student-name"></span></p>
+                        <p><strong>Email:</strong> <span id="modal-email"></span></p>
+                        <p><strong>Contact Number:</strong> <span id="modal-number"></span></p>
+                        <p><strong>Course:</strong> <span id="modal-course"></span></p>
+                        <p><strong>Section:</strong> <span id="modal-section"></span></p>
+                        <p><strong>School Year:</strong> <span id="modal-school-year"></span></p>
+                        <p><strong>Year Level:</strong> <span id="modal-year-level"></span></p>
+                    </div>
+                    <!-- Right Column: Request Info -->
+                    <div class="col-md-6">
+                        <h6>Request Information</h6>
+                        <p><strong>ID:</strong> <span id="modal-id"></span></p>
+                        <p><strong>Document Type:</strong> <span id="modal-document-type"></span></p>
+                        <p><strong>Price:</strong> <span id="modal-price"></span></p>
+                        <p><strong>Requested Date:</strong> <span id="modal-requested-date"></span></p>
+                        <p><strong>Status:</strong> <span id="modal-status"></span></p>
+                        <p><strong>Payment Status:</strong> <span id="modal-payment-status"></span></p>
+                        <p><strong>Reason for Request:</strong> <span id="modal-remarks"></span></p>
+                        <p><strong>Uploaded File:</strong> <span id="modal-file"></span></p>
+                        <p><strong>Rejection Reason:</strong> <span id="modal-rejection-reason"></span></p>
+                    </div>
+                </div>
+                <!-- QR Code Section -->
+                <div id="qr-code" style="display: none; text-align: center; margin-top: 20px;">
+                    <h6>QR Code for Pickup</h6>
+                    <div id="qr-code-canvas" style="display: inline-block;"></div>
+                    <a href="#" id="download-qr" class="btn btn-sm btn-primary mt-2" style="display: none;">Download QR Code</a>
+                </div>
             </div>
             <div class="modal-footer">
-                <button Mississauga: <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -262,7 +295,10 @@ while ($row = $result->fetch_assoc()) {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="submitRejection()">Reject</button>
+                <button type="button" class="btn btn-danger submit-reject-btn" onclick="submitRejection(this)">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                    Reject
+                </button>
             </div>
         </div>
     </div>
@@ -287,7 +323,10 @@ while ($row = $result->fetch_assoc()) {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="submitBulkRejection()">Reject Selected</button>
+                <button type="button" class="btn btn-danger submit-bulk-reject-btn" onclick="submitBulkRejection(this)">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                    Reject Selected
+                </button>
             </div>
         </div>
     </div>
@@ -301,6 +340,123 @@ function toggleSelectAll() {
     checkboxes.forEach(checkbox => checkbox.checked = selectAll.checked);
 }
 
+// Show spinner on a button
+function showSpinner(button, loadingText) {
+    const spinner = button.querySelector('.spinner-border');
+    spinner.style.display = 'inline-block';
+    button.disabled = true;
+    button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${loadingText}`;
+}
+
+// Hide spinner on a button
+function hideSpinner(button, originalText) {
+    const spinner = button.querySelector('.spinner-border');
+    spinner.style.display = 'none';
+    button.disabled = false;
+    button.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span> ${originalText}`;
+}
+
+// Individual approve
+function approveRequest(id, button) {
+    if (confirm(`Approve request ID: ${id}?`)) {
+        showSpinner(button, 'Approving...');
+        fetch('request_management.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=approve&id=${id}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => alert('Failed to approve request: ' + error.message))
+        .finally(() => hideSpinner(button, 'Approve'));
+    }
+}
+
+// Individual mark ready
+function markReady(id, button) {
+    if (confirm(`Mark request ID: ${id} as Ready to Pickup?`)) {
+        showSpinner(button, 'Marking...');
+        fetch('request_management.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=mark_ready&id=${id}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => alert('Failed to mark request as ready: ' + error.message))
+        .finally(() => hideSpinner(button, 'Mark Ready'));
+    }
+}
+
+// Individual mark completed
+function markCompleted(id, button) {
+    if (confirm(`Mark request ID: ${id} as Completed?`)) {
+        showSpinner(button, 'Completing...');
+        fetch('request_management.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=mark_completed&id=${id}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => alert('Failed to mark request as completed: ' + error.message))
+        .finally(() => hideSpinner(button, 'Mark Completed'));
+    }
+}
+
+// Individual reject
+document.querySelectorAll('[data-bs-target="#rejectModal"]').forEach(button => {
+    button.addEventListener('click', function () {
+        document.getElementById('reject-request-id').value = this.dataset.id;
+        document.getElementById('rejectModalLabel').textContent = `Reject Request ID: ${this.dataset.id}`;
+    });
+});
+
+function submitRejection(button) {
+    const id = document.getElementById('reject-request-id').value;
+    const reason = document.getElementById('rejection-reason').value.trim();
+    if (!reason) {
+        alert('Please provide a reason for rejection.');
+        return;
+    }
+    if (confirm(`Reject request ID: ${id}?`)) {
+        showSpinner(button, 'Rejecting...');
+        fetch('request_management.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=reject&id=${id}&rejection_reason=${encodeURIComponent(reason)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => alert('Failed to reject request: ' + error.message))
+        .finally(() => hideSpinner(button, 'Reject'));
+    }
+}
+
 // Bulk approve
 function bulkApprove() {
     const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
@@ -311,6 +467,8 @@ function bulkApprove() {
         return;
     }
     if (confirm(`Approve ${selected.length} selected Pending request(s)?`)) {
+        const button = document.getElementById('bulkActionsDropdown');
+        showSpinner(button, 'Approving...');
         fetch('request_management.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -324,7 +482,8 @@ function bulkApprove() {
                 alert('Error: ' + data.message);
             }
         })
-        .catch(error => alert('Failed to approve requests: ' + error.message));
+        .catch(error => alert('Failed to approve requests: ' + error.message))
+        .finally(() => hideSpinner(button, 'Bulk Actions'));
     }
 }
 
@@ -338,6 +497,8 @@ function bulkMarkReady() {
         return;
     }
     if (confirm(`Mark ${selected.length} selected In Process request(s) as Ready to Pickup?`)) {
+        const button = document.getElementById('bulkActionsDropdown');
+        showSpinner(button, 'Marking...');
         fetch('request_management.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -351,7 +512,8 @@ function bulkMarkReady() {
                 alert('Error: ' + data.message);
             }
         })
-        .catch(error => alert('Failed to mark requests as ready: ' + error.message));
+        .catch(error => alert('Failed to mark requests as ready: ' + error.message))
+        .finally(() => hideSpinner(button, 'Bulk Actions'));
     }
 }
 
@@ -365,6 +527,8 @@ function bulkMarkCompleted() {
         return;
     }
     if (confirm(`Mark ${selected.length} selected Ready to Pickup request(s) as Completed?`)) {
+        const button = document.getElementById('bulkActionsDropdown');
+        showSpinner(button, 'Completing...');
         fetch('request_management.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -378,7 +542,8 @@ function bulkMarkCompleted() {
                 alert('Error: ' + data.message);
             }
         })
-        .catch(error => alert('Failed to mark requests as completed: ' + error.message));
+        .catch(error => alert('Failed to mark requests as completed: ' + error.message))
+        .finally(() => hideSpinner(button, 'Bulk Actions'));
     }
 }
 
@@ -397,7 +562,7 @@ function bulkReject() {
 }
 
 // Submit bulk rejection
-function submitBulkRejection() {
+function submitBulkRejection(button) {
     const ids = document.getElementById('bulk-reject-ids').value;
     const reason = document.getElementById('bulk-rejection-reason').value.trim();
     if (!reason) {
@@ -405,6 +570,7 @@ function submitBulkRejection() {
         return;
     }
     if (confirm(`Reject ${ids.split(',').length} selected request(s)?`)) {
+        showSpinner(button, 'Rejecting...');
         fetch('request_management.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -418,101 +584,8 @@ function submitBulkRejection() {
                 alert('Error: ' + data.message);
             }
         })
-        .catch(error => alert('Failed to reject requests: ' + error.message));
-    }
-}
-
-// Individual approve
-function approveRequest(id) {
-    if (confirm(`Approve request ID: ${id}?`)) {
-        fetch('request_management.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=approve&id=${id}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => alert('Failed to approve request: ' + error.message));
-    }
-}
-
-// Individual mark ready
-function markReady(id) {
-    if (confirm(`Mark request ID: ${id} as Ready to Pickup?`)) {
-        fetch('request_management.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=mark_ready&id=${id}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => alert('Failed to mark request as ready: ' + error.message));
-    }
-}
-
-// Individual mark completed
-function markCompleted(id) {
-    if (confirm(`Mark request ID: ${id} as Completed?`)) {
-        fetch('request_management.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=mark_completed&id=${id}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => alert('Failed to mark request as completed: ' + error.message));
-    }
-}
-
-// Open reject modal
-document.querySelectorAll('[data-bs-target="#rejectModal"]').forEach(button => {
-    button.addEventListener('click', function () {
-        document.getElementById('reject-request-id').value = this.dataset.id;
-        document.getElementById('rejectModalLabel').textContent = `Reject Request ID: ${this.dataset.id}`;
-    });
-});
-
-// Submit individual rejection
-function submitRejection() {
-    const id = document.getElementById('reject-request-id').value;
-    const reason = document.getElementById('rejection-reason').value.trim();
-    if (!reason) {
-        alert('Please provide a reason for rejection.');
-        return;
-    }
-    if (confirm(`Reject request ID: ${id}?`)) {
-        fetch('request_management.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=reject&id=${id}&rejection_reason=${encodeURIComponent(reason)}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => alert('Failed to reject request: ' + error.message));
+        .catch(error => alert('Failed to reject requests: ' + error.message))
+        .finally(() => hideSpinner(button, 'Reject Selected'));
     }
 }
 
@@ -525,26 +598,70 @@ document.querySelectorAll('.view-btn').forEach(button => {
             .then(data => {
                 if (data.status === 'success') {
                     const request = data.data;
+                    // Student Information
+                    document.getElementById('modal-student-name').textContent = request.student_name;
+                    document.getElementById('modal-email').textContent = request.email || 'N/A';
+                    document.getElementById('modal-number').textContent = request.number || 'N/A';
+                    document.getElementById('modal-course').textContent = request.course_name || 'N/A';
+                    document.getElementById('modal-section').textContent = request.section_name || 'N/A';
+                    document.getElementById('modal-school-year').textContent = request.school_year || 'N/A';
+                    document.getElementById('modal-year-level').textContent = request.year_level || 'N/A';
+                    // Request Information
                     document.getElementById('modal-id').textContent = request.id;
                     document.getElementById('modal-document-type').textContent = request.document_type;
-                    document.getElementById('modal-student-name').textContent = request.student_name;
                     document.getElementById('modal-price').textContent = '₱' + parseFloat(request.unit_price).toFixed(2);
                     document.getElementById('modal-requested-date').textContent = new Date(request.requested_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
                     document.getElementById('modal-status').textContent = request.status;
+                    document.getElementById('modal-payment-status').textContent = request.payment_status || 'N/A';
                     document.getElementById('modal-remarks').textContent = request.remarks || 'N/A';
+                    document.getElementById('modal-rejection-reason').textContent = request.rejection_reason || 'N/A';
                     const fileSpan = document.getElementById('modal-file');
                     if (request.file_path) {
                         fileSpan.innerHTML = `<a href="../${request.file_path}" target="_blank" download>Download File</a>`;
                     } else {
                         fileSpan.textContent = 'No file uploaded';
                     }
+                    // QR Code
+                    const qrCodeDiv = document.getElementById('qr-code');
+                    const qrCodeCanvas = document.getElementById('qr-code-canvas');
+                    const downloadQrLink = document.getElementById('download-qr');
+                    qrCodeCanvas.innerHTML = ''; // Clear previous QR code
+                    if (request.status === 'Ready to Pickup') {
+                        qrCodeDiv.style.display = 'block';
+                        new QRCode(qrCodeCanvas, {
+                            text: `request_id:${request.id}`,
+                            width: 150,
+                            height: 150
+                        });
+                        // Center the canvas
+                        const canvas = qrCodeCanvas.querySelector('canvas');
+                        if (canvas) {
+                            canvas.style.display = 'block';
+                            canvas.style.margin = '0 auto';
+                        }
+                        downloadQrLink.style.display = 'inline-block';
+                        downloadQrLink.href = qrCodeCanvas.querySelector('canvas').toDataURL('image/png');
+                        downloadQrLink.download = `request_${request.id}_qr.png`;
+                    } else {
+                        qrCodeDiv.style.display = 'none';
+                        downloadQrLink.style.display = 'none';
+                    }
                 } else {
                     alert('Error: ' + data.message);
                 }
             })
-            .catch(error => alert('Failed to load request details: ' + error.message));
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to load request details.');
+            });
     });
 });
 </script>
 
 <?php require 'includes/footer.php'; ?>
+<!-- Include QRCode.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<?php
+// Close database connection
+$conn->close();
+?>

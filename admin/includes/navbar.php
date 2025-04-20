@@ -33,6 +33,21 @@ if ($admin_id) {
 } else {
     error_log('Admin ID not found in session. User may not be logged in.');
 }
+
+// Fetch the logged-in user's profile image
+$profile_image = '/capstone-admin/assets/images/default_profile.png'; // Default image
+if ($admin_id) {
+    $stmt = $conn->prepare("SELECT profile FROM users WHERE id = ?");
+    $stmt->bind_param("i", $admin_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+    $stmt->close();
+
+    if ($user && !empty($user['profile'])) {
+        $profile_image = $user['profile'];
+    }
+}
 ?>
 
 <header>
@@ -70,7 +85,7 @@ if ($admin_id) {
             </div>
             <div class="user">
                 <h3>Hello! Admin</h3>
-                <a href="" class="bg-img" style="background-image: url(../assets/images/default_profile.png);"></a>
+                <a href="#" class="bg-img" style="background-image: url('<?php echo htmlspecialchars($profile_image); ?>');"></a>
             </div>
         </div>
     </div>

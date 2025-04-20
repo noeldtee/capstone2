@@ -18,9 +18,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_request_id'])
     $stmt = $conn->prepare("UPDATE requests SET archived = 1 WHERE id = ? AND user_id = ?");
     $stmt->bind_param("ii", $request_id, $user_id);
     if ($stmt->execute()) {
-        $_SESSION['alert'] = ['message' => 'Request archived successfully.', 'type' => 'success'];
+        $_SESSION['message'] = 'Request archived successfully.';
+        $_SESSION['message_type'] = 'success';
     } else {
-        $_SESSION['alert'] = ['message' => 'Failed to archive request. Please try again.', 'type' => 'danger'];
+        $_SESSION['message'] = 'Failed to archive request. Please try again.';
+        $_SESSION['message_type'] = 'danger';
     }
     $stmt->close();
     // Removed header('Location: history.php'); to avoid redirect
@@ -32,9 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['retrieve_request_id']
     $stmt = $conn->prepare("UPDATE requests SET archived = 0 WHERE id = ? AND user_id = ?");
     $stmt->bind_param("ii", $request_id, $user_id);
     if ($stmt->execute()) {
-        $_SESSION['alert'] = ['message' => 'Request retrieved successfully.', 'type' => 'success'];
+        $_SESSION['message'] = 'Request retrieved successfully.';
+        $_SESSION['message_type'] = 'success';
     } else {
-        $_SESSION['alert'] = ['message' => 'Failed to retrieve request. Please try again.', 'type' => 'danger'];
+        $_SESSION['message'] = 'Failed to retrieve request. Please try again.';
+        $_SESSION['message_type'] = 'danger';
     }
     $stmt->close();
     // Removed header('Location: history.php'); to avoid redirect
@@ -76,20 +80,30 @@ $stmt->close();
 <link rel="stylesheet" href="../assets/css/user_dashboard.css">
 <link rel="stylesheet" href="../assets/css/history.css">
 <main>
-    <?php alertMessage(); ?>
+    <?php if (isset($_SESSION['message'])): ?>
+        <div class="alert alert-<?php echo $_SESSION['message_type']; ?> alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x" style="z-index: 1050; margin-top: 20px;" role="alert">
+            <?php echo htmlspecialchars($_SESSION['message']); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
+    <?php endif; ?>
     <div class="page-header">
         <h1>Your Request History</h1>
         <small>Check the history of your document request here.</small>
     </div>
     <div class="page-content">
-        <div class="mb-3 text-end">
+        <div class="mb-3 d-flex align-items-center justify-content-between">
+            <div class="input-group" style="width: 300px;">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="documentSearch" class="form-control" placeholder="Search document requests..." aria-label="Search document requests">
+            </div>
             <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#viewArchivedModal">
                 View Archived Requests
             </button>
         </div>
         <!-- Document Requests Table -->
         <div class="records table-responsive">
-            <table width="100%">
+            <table width="100%" id="documentRequestsTable">
                 <thead>
                     <tr>
                         <th>Document Requested</th>
@@ -104,7 +118,7 @@ $stmt->close();
                     <?php if (!empty($data['documentRequests'])): ?>
                         <?php foreach ($data['documentRequests'] as $request): ?>
                             <tr>
-                                <td><?= htmlspecialchars($request['document_type']); ?></td>
+                                <td class="document-type"><?= htmlspecialchars($request['document_type']); ?></td>
                                 <td>₱<?= htmlspecialchars(number_format($request['unit_price'], 2)); ?></td>
                                 <td><?= htmlspecialchars(date('Y-m-d', strtotime($request['requested_date']))); ?></td>
                                 <td><?= htmlspecialchars(ucfirst($request['status'])); ?></td>
@@ -345,6 +359,16 @@ $stmt->close();
         if (purposeTextarea) {
             purposeTextarea.value = button.getAttribute('data-purpose') || "N/A";
         }
+    });
+
+    // Search functionality for active document requests
+    document.getElementById('documentSearch').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#documentRequestsTable tbody tr');
+        rows.forEach(row => {
+            const documentType = row.querySelector('.document-type').textContent.toLowerCase();
+            row.style.display = documentType.includes(searchTerm) ? '' : 'none';
+        });
     });
 </script>
 

@@ -106,3 +106,23 @@ Stack trace:
 [18-Apr-2025 08:37:17 Europe/Berlin] Redirecting to: students.php? with message: User updated successfully. (success)
 [18-Apr-2025 16:21:52 Europe/Berlin] Redirecting to: students.php? with message: User added successfully. (success)
 [18-Apr-2025 16:48:41 Europe/Berlin] Redirecting to: sections.php with message: Section added successfully. (success)
+[19-Apr-2025 18:48:13 Europe/Berlin] Redirecting to: students.php? with message: Student ID already exists. (danger)
+[19-Apr-2025 18:48:29 Europe/Berlin] Redirecting to: students.php? with message: Student ID already exists. (danger)
+[19-Apr-2025 18:48:42 Europe/Berlin] Redirecting to: students.php? with message: User added successfully. (success)
+[19-Apr-2025 19:15:56 Europe/Berlin] Redirecting to: students.php? with message: User added successfully. (success)
+[19-Apr-2025 19:17:16 Europe/Berlin] Redirecting to: students.php? with message: User added successfully. (success)
+[20-Apr-2025 07:04:11 Europe/Berlin] Redirecting to: students.php? with message: User added successfully. (success)
+[20-Apr-2025 07:04:16 Europe/Berlin] Redirecting to: students.php? with message: User deleted successfully. (success)
+[20-Apr-2025 07:04:19 Europe/Berlin] Redirecting to: students.php? with message: User deleted successfully. (success)
+[20-Apr-2025 07:04:25 Europe/Berlin] Redirecting to: students.php? with message: User deleted successfully. (success)
+[20-Apr-2025 07:04:29 Europe/Berlin] Redirecting to: students.php? with message: User deleted successfully. (success)
+[20-Apr-2025 07:04:31 Europe/Berlin] Redirecting to: students.php? with message: User deleted successfully. (success)
+[20-Apr-2025 07:20:48 Europe/Berlin] Redirecting to: students.php? with message: User deleted successfully. (success)
+[20-Apr-2025 07:21:14 Europe/Berlin] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'verify_expiry' in 'field list' in C:\xampp\htdocs\capstone-admin\admin\student_actions.php:169
+Stack trace:
+#0 C:\xampp\htdocs\capstone-admin\admin\student_actions.php(169): mysqli->prepare('INSERT INTO use...')
+#1 {main}
+  thrown in C:\xampp\htdocs\capstone-admin\admin\student_actions.php on line 169
+[20-Apr-2025 07:22:20 Europe/Berlin] Redirecting to: students.php? with message: User added successfully. A verification email has been sent to noeldtee@gmail.com. (success)
+[20-Apr-2025 07:37:48 Europe/Berlin] Redirecting to: students.php? with message: User deleted successfully. (success)
+[20-Apr-2025 07:38:05 Europe/Berlin] Redirecting to: students.php? with message: User added successfully. A verification email has been sent to noeldtee@gmail.com. (success)

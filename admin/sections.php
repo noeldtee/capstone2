@@ -149,9 +149,7 @@ if (!$stmt) {
             <div class="record-header">
                 <div class="add">
                     <span>All Sections (<?php echo count($sections); ?> found)</span>
-                </div>
-                <div class="action">
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSectionModal">Add Section</button>
+                    <button type="button" class="btn btn-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#addSectionModal">Add Section</button>
                 </div>
             </div>
             <div>
