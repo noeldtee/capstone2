@@ -170,11 +170,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Ensure the user is logged in
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['student'])) {
-    redirect('/capstone-admin/index.php', 'Please log in as a student to manage your settings.', 'danger');
-}
-
 // Verify database connection
 if (!$conn) {
     redirect('/capstone-admin/index.php', 'Database connection failed.', 'danger');

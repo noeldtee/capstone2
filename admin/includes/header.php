@@ -1,9 +1,9 @@
 <?php
 require $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/config/function.php';
 
-// Restrict to authenticated admin or registrar
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
-    redirect('../index.php', 'Please log in as an admin or registrar to access this page.', 'warning');
+// Restrict to authenticated admin, registrar, or cashier
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar', 'cashier'])) {
+    redirect('../index.php', 'Please log in as an admin, registrar, or cashier to access this page.', 'warning');
     exit();
 }
 ?>

@@ -7,11 +7,20 @@ use PHPMailer\PHPMailer\Exception;
 
 require 'vendor/autoload.php';
 
-// Start the session to store form data
-session_start();
+// Start the session only if it hasn't been started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 if (isset($_POST['register_btn'])) {
+    // Debug: Log raw POST data
+    error_log("Raw POST data: " . print_r($_POST, true));
+
     $data = validate($_POST);
+
+    // Debug: Log sanitized data
+    error_log("Sanitized data: " . print_r($data, true));
+
     $profile = $_FILES['profile'] ?? null;
 
     // Initialize array to track invalid fields
@@ -30,8 +39,12 @@ if (isset($_POST['register_btn'])) {
         }
     }
 
+    // Debug: Log role before validation
+    error_log("Role value before validation: role=" . $data['role']);
+
     // Validate role
     if (!in_array($data['role'], ['student', 'alumni'])) {
+        error_log("Role validation failed: role=" . $data['role']);
         $data['invalid_fields'][] = 'role';
         $form_data = $data;
         unset($form_data['password']);
@@ -250,7 +263,7 @@ if (isset($_POST['register_btn'])) {
     $studentid = $data['studentid'];
     $firstname = $data['firstname'];
     $role = $data['role'];
-    $middlename = $data['middlename'] ?? ''; // Middle name is optional
+    $middlename = $data['middlename'] ?? '';
     $lastname = $data['lastname'];
     $email = $data['email'];
     $number = $data['number'];
@@ -260,7 +273,7 @@ if (isset($_POST['register_btn'])) {
     $terms = $data['terms'] ? 1 : 0;
     $verify_status = 0;
 
-    // Log the role value before insertion for debugging
+    // Debug: Log role before insertion
     error_log("Role value before insertion: role=$role");
 
     // Log before insertion
@@ -274,7 +287,13 @@ if (isset($_POST['register_btn'])) {
         exit;
     }
 
-    $stmt->bind_param("ssssssssssiiisiiis", $studentid, $firstname, $middlename, $lastname, $email, $number, $hashedPassword, $profilePath, $gender, $birthdate, $data['course_id'], $data['section_id'], $data['year_id'], $year_level, $role, $terms, $verify_status, $verify_token);
+    // Debug: Log the number of bind variables
+    $bind_vars = [$studentid, $firstname, $middlename, $lastname, $email, $number, $hashedPassword, $profilePath, $gender, $birthdate, $data['course_id'], $data['section_id'], $data['year_id'], $year_level, $role, $terms, $verify_status, $verify_token];
+    error_log("Number of bind variables: " . count($bind_vars));
+    error_log("Bind variables: " . print_r($bind_vars, true));
+
+    // Corrected bind_param with 18 types for 18 variables
+    $stmt->bind_param("ssssssssssiiissiis", $studentid, $firstname, $middlename, $lastname, $email, $number, $hashedPassword, $profilePath, $gender, $birthdate, $data['course_id'], $data['section_id'], $data['year_id'], $year_level, $role, $terms, $verify_status, $verify_token);
     if ($stmt->execute()) {
         $inserted_id = $stmt->insert_id;
         error_log("User inserted successfully: ID=$inserted_id, studentid=$studentid, role=$role");

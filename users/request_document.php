@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                     if ($stmt->execute()) {
                         $request_id = $conn->insert_id;
                         $request_ids[] = $request_id;
-
+            
                         // Insert into payments table (fixed bind_param)
                         $payment_amount = (float)$unit_price; // Already in pesos
                         $description = "Payment for document request: {$doc['document_type']}";
@@ -184,10 +184,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                 }
                 $stmt->close();
                 $stmt_payment->close();
-
+            
                 if (!$has_error) {
                     // Create notifications for student
-                    $message = "Request for document(s) #" . implode(', #', $request_ids) . " was successful.";
+                    $doc_names_list = implode(' and ', $doc_names); // e.g., "Transcript of Records and Diploma"
+                    $message = "Request for $doc_names_list was successful. Request ID(s): #" . implode(', #', $request_ids) . ".";
                     $link = "dashboard.php";
                     $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
                     $stmt->bind_param("iss", $user_id, $message, $link);
@@ -197,23 +198,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                         error_log("Failed to create notification for user $user_id: " . $stmt->error);
                     }
                     $stmt->close();
-
+            
                     // Notify admins
                     $stmt = $conn->prepare("SELECT id FROM users WHERE role = 'admin'");
                     $stmt->execute();
                     $admins = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     $stmt->close();
-
+            
                     $stmt = $conn->prepare("SELECT firstname, lastname FROM users WHERE id = ?");
                     $stmt->bind_param("i", $user_id);
                     $stmt->execute();
                     $user = $stmt->get_result()->fetch_assoc();
                     $stmt->close();
-
+            
                     $student_name = $user['firstname'] . ' ' . $user['lastname'];
-                    $admin_message = "Student $student_name submitted a request for document(s) #" . implode(', #', $request_ids) . ".";
+                    $admin_message = "Student $student_name submitted a request for $doc_names_list. Request ID(s): #" . implode(', #', $request_ids) . ".";
                     $admin_link = "/capstone-admin/admin/request.php?id=" . $request_ids[0];
-
+            
                     foreach ($admins as $admin) {
                         $stmt = $conn->prepare("INSERT INTO admin_notifications (admin_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
                         $stmt->bind_param("iss", $admin['id'], $admin_message, $admin_link);
@@ -224,10 +225,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                         }
                         $stmt->close();
                     }
-
+            
                     // Show success modal
                     $show_success_modal = true;
-                    $success_message = "Request for document(s) #" . implode(', #', $request_ids) . " was successful.";
+                    $success_message = "Request for $doc_names_list was successful. Request ID(s): #" . implode(', #', $request_ids) . ".";
                 }
             } else {
                 // Payment required, create PayMongo Checkout Session

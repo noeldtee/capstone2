@@ -81,18 +81,20 @@ while ($row = $result->fetch_assoc()) {
     $paginated_payments[] = $row;
 }
 
-// Fetch archived payments for the modal
-$archived_query = "SELECT p.id, p.request_id, p.payment_method, p.amount, p.payment_status, 
-                          p.description, p.payment_date 
-                   FROM payments p 
-                   WHERE p.archived = 1 
-                   ORDER BY p.payment_date DESC";
-$stmt = $conn->prepare($archived_query);
-$stmt->execute();
-$archived_result = $stmt->get_result();
+// Fetch archived payments for the modal (only for admin and registrar)
 $archived_payments = [];
-while ($row = $archived_result->fetch_assoc()) {
-    $archived_payments[] = $row;
+if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
+    $archived_query = "SELECT p.id, p.request_id, p.payment_method, p.amount, p.payment_status, 
+                              p.description, p.payment_date 
+                       FROM payments p 
+                       WHERE p.archived = 1 
+                       ORDER BY p.payment_date DESC";
+    $stmt = $conn->prepare($archived_query);
+    $stmt->execute();
+    $archived_result = $stmt->get_result();
+    while ($row = $archived_result->fetch_assoc()) {
+        $archived_payments[] = $row;
+    }
 }
 ?>
 
@@ -134,7 +136,9 @@ while ($row = $archived_result->fetch_assoc()) {
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary btn-sm">Filter</button>
                     <a href="payment_logs.php" class="btn btn-secondary btn-sm">Clear</a>
-                    <button type="button" class="btn btn-primary btn-sm" style="margin-top: 3px;" data-bs-toggle="modal" data-bs-target="#archiveModal">View Archives</button>
+                    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                        <button type="button" class="btn btn-primary btn-sm" style="margin-top: 3px;" data-bs-toggle="modal" data-bs-target="#archiveModal">View Archives</button>
+                    <?php endif; ?>
                 </div>
                 <div class="col-12">
                     <small id="date-error" class="text-danger" style="display: none;"></small>
@@ -147,7 +151,9 @@ while ($row = $archived_result->fetch_assoc()) {
             <div class="record-header">
                 <div class="add">
                     <span>All Payment Transactions (<?php echo $total_payments; ?> found)</span>
-                    <button type="button" class="btn btn-warning btn-sm float-end" onclick="bulkArchive()">Archive Selected</button>
+                    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                        <button type="button" class="btn btn-warning btn-sm float-end" onclick="bulkArchive()">Archive Selected</button>
+                    <?php endif; ?>
                     <?php if ($_SESSION['role'] === 'admin'): ?>
                         <button type="button" class="btn btn-danger btn-sm float-end me-2" onclick="bulkDelete()">Delete Selected</button>
                     <?php endif; ?>
@@ -157,7 +163,9 @@ while ($row = $archived_result->fetch_assoc()) {
                 <table class="table table-striped table-hover" width="100%">
                     <thead>
                         <tr>
-                            <th><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th>
+                            <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                                <th><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th>
+                            <?php endif; ?>
                             <th>Payment Method</th>
                             <th>Amount</th>
                             <th>Status</th>
@@ -169,14 +177,16 @@ while ($row = $archived_result->fetch_assoc()) {
                     <tbody>
                         <?php if (empty($paginated_payments)): ?>
                             <tr>
-                                <td colspan="7" class="text-center">No payments found.</td>
+                                <td colspan="<?php echo ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') ? '7' : '6'; ?>" class="text-center">No payments found.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($paginated_payments as $payment): ?>
                                 <tr>
-                                    <td>
-                                        <input type="checkbox" name="selected_payments[]" value="<?php echo $payment['id']; ?>" class="payment-checkbox">
-                                    </td>
+                                    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                                        <td>
+                                            <input type="checkbox" name="selected_payments[]" value="<?php echo $payment['id']; ?>" class="payment-checkbox">
+                                        </td>
+                                    <?php endif; ?>
                                     <td><?php echo htmlspecialchars($payment['payment_method']); ?></td>
                                     <td>₱<?php echo number_format($payment['amount'], 2); ?></td>
                                     <td>
@@ -274,7 +284,8 @@ while ($row = $archived_result->fetch_assoc()) {
     </div>
 </div>
 
-<!-- Archive Modal -->
+<!-- Archive Modal (only for admin and registrar) -->
+<?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
 <div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -324,7 +335,7 @@ while ($row = $archived_result->fetch_assoc()) {
                                     <td><?php echo htmlspecialchars($payment['description']); ?></td>
                                     <td><?php echo date('F j, Y, h:i A', strtotime($payment['payment_date'])); ?></td>
                                     <td>
-                                        <a href="#" class="view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $payment['id']; ?>">View details</a>
+                                        <a href="#" class="btn btn-success btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $payment['id']; ?>">View details</a>
                                         <button type="button" class="btn btn-success btn-sm retrieve-btn" data-id="<?php echo $payment['id']; ?>">Retrieve</button>
                                         <?php if ($_SESSION['role'] === 'admin'): ?>
                                             <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $payment['id']; ?>">Delete</button>
@@ -342,9 +353,10 @@ while ($row = $archived_result->fetch_assoc()) {
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <script>
-    // Toggle all checkboxes
+    // Toggle all checkboxes (only for admin and registrar)
     function toggleSelectAll() {
         const selectAll = document.getElementById('select-all');
         const checkboxes = document.querySelectorAll('.payment-checkbox');
@@ -373,7 +385,8 @@ while ($row = $archived_result->fetch_assoc()) {
         if (processingDiv) processingDiv.remove();
     }
 
-    // Bulk archive selected payments
+    // Bulk archive selected payments (only for admin and registrar)
+    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
     function bulkArchive() {
         const selected = Array.from(document.querySelectorAll('.payment-checkbox:checked'))
             .map(checkbox => checkbox.value);
@@ -405,6 +418,7 @@ while ($row = $archived_result->fetch_assoc()) {
                 });
         }
     }
+    <?php endif; ?>
 
     <?php if ($_SESSION['role'] === 'admin'): ?>
         // Bulk delete selected payments
@@ -441,7 +455,7 @@ while ($row = $archived_result->fetch_assoc()) {
         }
     <?php endif; ?>
 
-    // Individual archive function
+    // Individual archive function (not applicable for cashier)
     document.querySelectorAll('.archive-btn').forEach(button => {
         button.addEventListener('click', function() {
             const paymentId = this.dataset.id;
@@ -503,7 +517,8 @@ while ($row = $archived_result->fetch_assoc()) {
         });
     <?php endif; ?>
 
-    // Retrieve (unarchive) a payment
+    // Retrieve (unarchive) a payment (only for admin and registrar)
+    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
     document.querySelectorAll('.retrieve-btn').forEach(button => {
         button.addEventListener('click', function() {
             const paymentId = this.dataset.id;
@@ -512,7 +527,7 @@ while ($row = $archived_result->fetch_assoc()) {
                 fetch('payment_actions.php', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
+                            'Content-Type': "application/x-www-form-urlencoded"
                         },
                         body: `action=retrieve&id=${paymentId}`
                     })
@@ -532,6 +547,7 @@ while ($row = $archived_result->fetch_assoc()) {
             }
         });
     });
+    <?php endif; ?>
 
     // Populate view modal
     document.querySelectorAll('.view-btn').forEach(button => {

@@ -16,7 +16,7 @@ header('Content-Type: application/json');
 $response = ['status' => 'error', 'message' => 'Invalid action.'];
 
 // Check if user is logged in and authorized
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar', 'cashier'])) {
     $response = ['status' => 'error', 'message' => 'Unauthorized access.'];
     echo json_encode($response);
     ob_end_flush();

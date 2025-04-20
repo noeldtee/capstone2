@@ -34,18 +34,27 @@ if ($admin_id) {
     error_log('Admin ID not found in session. User may not be logged in.');
 }
 
-// Fetch the logged-in user's profile image
+// Fetch the logged-in user's profile image, firstname, and lastname
 $profile_image = '../assets/images/default_profile.jpg'; // Default image (relative path)
+$firstname = 'User'; // Default firstname
+$lastname = ''; // Default lastname
+
 if ($admin_id) {
-    $stmt = $conn->prepare("SELECT profile FROM users WHERE id = ?");
+    $stmt = $conn->prepare("SELECT profile, firstname, lastname FROM users WHERE id = ?");
     $stmt->bind_param("i", $admin_id);
     $stmt->execute();
     $result = $stmt->get_result();
     $user = $result->fetch_assoc();
     $stmt->close();
 
-    if ($user && !empty($user['profile'])) {
-        $profile_image = '../' . $user['profile']; // Prepend '../' to the custom profile path
+    if ($user) {
+        // Set profile image
+        if (!empty($user['profile'])) {
+            $profile_image = '../' . $user['profile']; // Prepend '../' to the custom profile path
+        }
+        // Set firstname and lastname
+        $firstname = $user['firstname'] ?? 'User';
+        $lastname = $user['lastname'] ?? '';
     }
 }
 ?>
@@ -84,7 +93,7 @@ if ($admin_id) {
                 </div>
             </div>
             <div class="user">
-                <h3>Hello! Admin</h3>
+                <h3>Hello, <?= htmlspecialchars($firstname . ' ' . $lastname); ?>!</h3>
                 <a href="dashboard.php" class="bg-img" style="background-image: url('<?php echo htmlspecialchars($profile_image); ?>');"></a>
             </div>
         </div>

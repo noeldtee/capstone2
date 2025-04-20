@@ -13,52 +13,64 @@
                         <small>Dashboard</small>
                     </a>
                 </li>
-                <li>
-                    <a href="request.php" class="<?php echo (isset($page_title) && $page_title === 'Document Request Management') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-file-signature"></i>
-                        <small>Request Management</small>
-                    </a>
-                </li>
-                <li>
-                    <a href="request_logs.php" class="<?php echo (isset($page_title) && $page_title === 'Request Logs') ? 'active' : ''; ?>">
-                        <i class="fa-solid fa-history"></i>
-                        <small>Request Logs</small>
-                    </a>
-                </li>
+                <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                    <li>
+                        <a href="request.php" class="<?php echo (isset($page_title) && $page_title === 'Document Request Management') ? 'active' : ''; ?>">
+                            <i class="fa-solid fa-file-signature"></i>
+                            <small>Request Management</small>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="request_logs.php" class="<?php echo (isset($page_title) && $page_title === 'Request Logs') ? 'active' : ''; ?>">
+                            <i class="fa-solid fa-history"></i>
+                            <small>Request Logs</small>
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <li>
                     <a href="payment_logs.php" class="<?php echo (isset($page_title) && $page_title === 'Payment Logs') ? 'active' : ''; ?>">
                         <i class="fa-solid fa-money-check-alt"></i>
                         <small>Payment Logs</small>
                     </a>
                 </li>
-                <!-- Settings with Bootstrap Dropdown -->
-                <li class="dropdown">
-                    <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Document Management', 'Academic Management', 'Users Management'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fa-solid fa-cogs"></i>
-                        <small>Management</small>
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="settingsDropdown">
-                        <li>
-                            <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Document Management') ? 'active' : ''; ?>" href="documents.php">
-                                <i class="fa-solid fa-file-alt me-2"></i>
-                                Document Management
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Academic Management') ? 'active' : ''; ?>" href="sections.php">
-                                <i class="fa-solid fa-school me-2"></i>
-                                Academic Management
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Users Management') ? 'active' : ''; ?>" href="students.php">
-                                <i class="fa-solid fa-users me-2"></i>
-                                Users Management
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                    <!-- Settings with Bootstrap Dropdown -->
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Document Management', 'Academic Management', 'Users Management'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-cogs"></i>
+                            <small>Management</small>
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="settingsDropdown">
+                            <li>
+                                <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Document Management') ? 'active' : ''; ?>" href="documents.php">
+                                    <i class="fa-solid fa-file-alt me-2"></i>
+                                    Document Management
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Academic Management') ? 'active' : ''; ?>" href="sections.php">
+                                    <i class="fa-solid fa-school me-2"></i>
+                                    Academic Management
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Users Management') ? 'active' : ''; ?>" href="students.php">
+                                    <i class="fa-solid fa-users me-2"></i>
+                                    Users Management
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                <?php else: ?>
+                    <!-- For cashier, show Document Management as a direct link -->
+                    <li>
+                        <a href="documents.php" class="<?php echo (isset($page_title) && $page_title === 'Document Management') ? 'active' : ''; ?>">
+                            <i class="fa-solid fa-file-alt"></i>
+                            <small>Document Management</small>
+                        </a>
+                    </li>
+                <?php endif; ?>
+                <?php if ($_SESSION['role'] === 'admin'): ?>
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Action Logs', 'Settings - Terms and Conditions', 'Admin Users'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa-solid fa-user-shield"></i>

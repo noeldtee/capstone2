@@ -60,7 +60,7 @@ try {
 <main>
     <div class="page-header">
         <span>Document Management</span><br>
-        <small>Create, edit, or delete documents available for request.</small>
+        <small>View documents available for request.</small>
     </div>
     <div class="page-content">
         <!-- Records Table -->
@@ -68,7 +68,9 @@ try {
             <div class="record-header">
                 <div class="add">
                     <span>All Documents (<?php echo $total_documents; ?> found)</span>
-                    <button type="button" class="btn btn-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#addModal">Add Document</button>
+                    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                        <button type="button" class="btn btn-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#addModal">Add Document</button>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php if (isset($_SESSION['message']) && $_SESSION['message_type'] === 'danger'): ?>
@@ -102,7 +104,9 @@ try {
                                         </td>
                                         <td><?php echo $doc['restrict_per_semester'] == 1 ? 'Restricted' : 'Not Restricted'; ?></td>
                                         <td>
-                                            <button type="button" class="btn btn-primary btn-sm edit-btn" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<?php echo $doc['id']; ?>">Edit</button>
+                                            <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                                                <button type="button" class="btn btn-primary btn-sm edit-btn" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<?php echo $doc['id']; ?>">Edit</button>
+                                            <?php endif; ?>
                                             <?php if ($_SESSION['role'] === 'admin'): ?>
                                                 <button type="button" class="btn btn-danger btn-sm delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="<?php echo $doc['id']; ?>">Delete</button>
                                             <?php endif; ?>
@@ -135,7 +139,8 @@ try {
     </div>
 </main>
 
-<!-- Add Document Modal -->
+<!-- Add Document Modal (only for admin and registrar) -->
+<?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
 <div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -189,7 +194,7 @@ try {
     </div>
 </div>
 
-<!-- Edit Document Modal -->
+<!-- Edit Document Modal (only for admin and registrar) -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -268,9 +273,11 @@ try {
     </div>
 </div>
 <?php endif; ?>
+<?php endif; ?>
 
 <script>
-// Reset modals on close to prevent stale data
+// Reset modals on close to prevent stale data (only for admin and registrar)
+<?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
 document.getElementById('addModal').addEventListener('hidden.bs.modal', function () {
     document.getElementById('addDocumentForm').reset();
     document.getElementById('addUnitPrice').value = '0.00';
@@ -320,6 +327,7 @@ document.querySelectorAll('.delete-btn').forEach(button => {
         document.getElementById('deleteId').value = this.dataset.id;
     });
 });
+<?php endif; ?>
 <?php endif; ?>
 </script>
 

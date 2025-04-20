@@ -26,6 +26,7 @@ switch ($action) {
         $password = validate($_POST['password']);
         $role = validate($_POST['role']);
         $is_ban = (int)validate($_POST['is_ban']);
+        $verify_status = 1; // Automatically set verify_status to 1 for admins
 
         if (!preg_match('/^09[0-9]{9}$/', $number)) {
             redirect('admin.php', 'Phone number must start with 09 and be 11 digits long.', 'danger');
@@ -95,9 +96,9 @@ switch ($action) {
 
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-        // Insert the user and get the inserted ID
-        $stmt = $conn->prepare("INSERT INTO users (firstname, lastname, email, number, profile, password, role, is_ban, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-        $stmt->bind_param("sssssssi", $firstname, $lastname, $email, $number, $profile, $hashed_password, $role, $is_ban);
+        // Insert the user with verify_status set to 1
+        $stmt = $conn->prepare("INSERT INTO users (firstname, lastname, email, number, profile, password, role, is_ban, verify_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("sssssssii", $firstname, $lastname, $email, $number, $profile, $hashed_password, $role, $is_ban, $verify_status);
         if ($stmt->execute()) {
             $user_id = $stmt->insert_id; // Get the ID of the newly inserted user
 

@@ -2,6 +2,12 @@
 $page_title = "Academic Management";
 include('includes/header.php');
 
+// Check if user is logged in
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
+    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+    exit();
+}
+
 // Search and filter parameters
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $school_year_filter = isset($_GET['school_year']) ? trim($_GET['school_year']) : '';

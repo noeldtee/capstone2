@@ -2,6 +2,12 @@
 $page_title = "Request Logs";
 require 'includes/header.php';
 
+// Check if user is logged in
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
+    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+    exit();
+}
+
 // Pagination settings
 $requests_per_page = 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
