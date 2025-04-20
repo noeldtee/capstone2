@@ -154,7 +154,7 @@ $stmt->close();
                         <?php else: ?>
                             <?php foreach ($admins as $admin): ?>
                                 <tr>
-                                    <td><img src="<?php echo htmlspecialchars($admin['profile'] ?? '../assets/images/default_profile.png'); ?>" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"></td>
+                                    <td><img src="<?php echo htmlspecialchars($admin['profile'] ? '../' . $admin['profile'] : '../assets/images/default_profile.jpg'); ?>" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"></td>
                                     <td><?php echo htmlspecialchars($admin['full_name']); ?></td>
                                     <td><?php echo htmlspecialchars($admin['email']); ?></td>
                                     <td><?php echo htmlspecialchars($admin['number']); ?></td>
@@ -194,9 +194,16 @@ $stmt->close();
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addAdminForm" method="POST" action="admin_actions.php">
+                <form id="addAdminForm" method="POST" action="admin_actions.php" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="add">
-                    <input type="hidden" name="profile" value="../assets/images/default_profile.png">
+                    <div class="mb-3">
+                        <label for="addProfileImage" class="form-label">Profile Image (Optional)</label>
+                        <div class="mb-2">
+                            <img id="addProfilePreview" src="../assets/images/default_profile.jpg" alt="Profile Preview" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
+                        </div>
+                        <input type="file" class="form-control" id="addProfileImage" name="profile_image" accept="image/jpeg,image/png">
+                        <small class="form-text text-muted">Upload a profile image (JPG/PNG, max 2MB).</small>
+                    </div>
                     <div class="mb-3">
                         <label for="addFirstname" class="form-label">First Name</label>
                         <input type="text" class="form-control" id="addFirstname" name="firstname" required>
@@ -252,10 +259,18 @@ $stmt->close();
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="editAdminForm" method="POST" action="admin_actions.php">
+                <form id="editAdminForm" method="POST" action="admin_actions.php" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" id="editId" name="id">
                     <input type="hidden" id="editProfile" name="profile">
+                    <div class="mb-3">
+                        <label for="editProfileImage" class="form-label">Profile Image</label>
+                        <div class="mb-2">
+                            <img id="editProfilePreview" src="../assets/images/default_profile.jpg" alt="Profile Preview" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
+                        </div>
+                        <input type="file" class="form-control" id="editProfileImage" name="profile_image" accept="image/jpeg,image/png">
+                        <small class="form-text text-muted">Upload a new profile image (JPG/PNG, max 2MB).</small>
+                    </div>
                     <div class="mb-3">
                         <label for="editFirstname" class="form-label">First Name</label>
                         <input type="text" class="form-control" id="editFirstname" name="firstname" required>
@@ -347,7 +362,8 @@ document.querySelectorAll('.edit-btn').forEach(button => {
                 if (data.status === 200) {
                     const admin = data.data;
                     document.getElementById('editId').value = admin.id;
-                    document.getElementById('editProfile').value = admin.profile || '../assets/images/default_profile.png';
+                    document.getElementById('editProfile').value = admin.profile || '';
+                    document.getElementById('editProfilePreview').src = admin.profile ? '../' + admin.profile : '../assets/images/default_profile.jpg';
                     document.getElementById('editFirstname').value = admin.firstname;
                     document.getElementById('editLastname').value = admin.lastname;
                     document.getElementById('editEmail').value = admin.email;
@@ -367,6 +383,32 @@ document.querySelectorAll('.edit-btn').forEach(button => {
                 form.style.display = 'block';
             });
     });
+});
+
+// Preview new profile image in Edit Modal
+document.getElementById('editProfileImage').addEventListener('change', function (event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            document.getElementById('editProfilePreview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Preview new profile image in Add Modal
+document.getElementById('addProfileImage').addEventListener('change', function (event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            document.getElementById('addProfilePreview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        document.getElementById('addProfilePreview').src = '../assets/images/default_profile.jpg';
+    }
 });
 
 // Populate Delete Modal

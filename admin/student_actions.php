@@ -57,12 +57,12 @@ switch ($action) {
             empty($_POST['section_id']) || empty($_POST['year_id']) || empty($_POST['year_level']) ||
             empty($_POST['role']) || !isset($_POST['is_ban']) || !isset($_POST['terms'])
         ) {
-            redirect('students.php?' . http_build_query($_GET), 'All fields are required.', 'danger');
+            redirect('students.php?' . http_build_query($_GET), 'All required fields must be filled.', 'danger');
         }
 
         $studentid = validate($_POST['studentid']);
         $firstname = validate($_POST['firstname']);
-        $middlename = validate($_POST['middlename'] ?? '');
+        $middlename = validate($_POST['middlename'] ?? ''); // Middle name is optional
         $lastname = validate($_POST['lastname']);
         $email = validate($_POST['email']);
         $password = validate($_POST['password']);
@@ -172,7 +172,8 @@ switch ($action) {
         $stmt->bind_param("ssssssiisssiisss", $studentid, $firstname, $middlename, $lastname, $email, $hashed_password, $course_id, $section_id, $year_id, $year_level, $role, $terms, $is_ban, $verify_status, $verify_token, $verify_expires_at);
         if ($stmt->execute()) {
             $user_id = $stmt->insert_id;
-            $log_success = logAction($conn, "Student Added", "User ID: $user_id", "Student ID: $studentid, Name: $firstname $middlename $lastname, Role: $role", $_SERVER['REMOTE_ADDR']);
+            $full_name = trim("$firstname $middlename $lastname"); // Trim to handle optional middle name
+            $log_success = logAction($conn, "Student Added", "User ID: $user_id", "Student ID: $studentid, Name: $full_name, Role: $role", $_SERVER['REMOTE_ADDR']);
             if (!$log_success) {
                 error_log("Failed to log action for adding user ID: $user_id");
             }
@@ -257,13 +258,13 @@ switch ($action) {
             empty($_POST['section_id']) || empty($_POST['year_id']) || empty($_POST['year_level']) ||
             empty($_POST['role']) || !isset($_POST['is_ban'])
         ) {
-            redirect('students.php?' . http_build_query($_GET), 'All fields are required.', 'danger');
+            redirect('students.php?' . http_build_query($_GET), 'All required fields must be filled.', 'danger');
         }
 
         $id = (int)validate($_POST['id']);
         $studentid = validate($_POST['studentid']);
         $firstname = validate($_POST['firstname']);
-        $middlename = validate($_POST['middlename'] ?? '');
+        $middlename = validate($_POST['middlename'] ?? ''); // Middle name is optional
         $lastname = validate($_POST['lastname']);
         $email = validate($_POST['email']);
         $password = isset($_POST['password']) ? trim($_POST['password']) : '';
@@ -371,7 +372,8 @@ switch ($action) {
         }
 
         if ($stmt->execute()) {
-            $log_success = logAction($conn, "Student Edited", "User ID: $id", "Student ID: $studentid, Name: $firstname $middlename $lastname, Role: $role", $_SERVER['REMOTE_ADDR']);
+            $full_name = trim("$firstname $middlename $lastname"); // Trim to handle optional middle name
+            $log_success = logAction($conn, "Student Edited", "User ID: $id", "Student ID: $studentid, Name: $full_name, Role: $role", $_SERVER['REMOTE_ADDR']);
             if (!$log_success) {
                 error_log("Failed to log action for editing user ID: $id");
             }
@@ -403,7 +405,8 @@ switch ($action) {
 
         if ($stmt->affected_rows > 0) {
             if ($user) {
-                $log_success = logAction($conn, "Student Deleted", "User ID: $id", "Student ID: {$user['studentid']}, Name: {$user['firstname']} {$user['middlename']} {$user['lastname']}, Role: {$user['role']}", $_SERVER['REMOTE_ADDR']);
+                $full_name = trim("{$user['firstname']} {$user['middlename']} {$user['lastname']}"); // Trim to handle optional middle name
+                $log_success = logAction($conn, "Student Deleted", "User ID: $id", "Student ID: {$user['studentid']}, Name: $full_name, Role: {$user['role']}", $_SERVER['REMOTE_ADDR']);
                 if (!$log_success) {
                     error_log("Failed to log action for deleting user ID: $id");
                 }

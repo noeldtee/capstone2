@@ -75,15 +75,57 @@ if (isset($_POST['resend_email_verify_btn'])) {
             $mail->isHTML(true);
             $mail->Subject = 'Resend Email Verification from Bulacan Polytechnic College Registrar';
 
-            $email_template = "
-                <h2>Email Verification</h2>
-                <p>Hi " . htmlspecialchars($row['firstname'], ENT_QUOTES, 'UTF-8') . ", Please click the link below to verify your email address.</p>
-                <br><br>
-                <a href='http://localhost/capstone-admin/verify-email.php?token=" . urlencode($verify_token) . "'>Verify Email</a>
-                <p>This link will expire in 24 hours.</p>
-            ";
+            $email_template = '
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f4f4;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+        <!-- Header -->
+        <tr>
+            <td style="padding: 20px; text-align: center; background-color: #2e7d32; border-top-left-radius: 10px; border-top-right-radius: 10px;">
+                <img src="https://9b67-120-29-78-198.ngrok-free.app/capstone-admin/assets/images/logo.png" alt="BPC Logo" width="80" height="76" style="display: block; margin: 0 auto;">
+                <h2 style="color: #ffffff; margin: 10px 0 0; font-size: 24px;">Bulacan Polytechnic College Registrar</h2>
+            </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+            <td style="padding: 30px; text-align: center;">
+                <h3 style="color: #2e7d32; margin: 0 0 15px; font-size: 20px;">Email Verification</h3>
+                <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 20px;">
+                    Hi ' . htmlspecialchars($row['firstname'], ENT_QUOTES, 'UTF-8') . ',<br>
+                    Please click the button below to verify your email address. This link will expire in 24 hours.
+                </p>
+                <a href="http://localhost/capstone-admin/verify-email.php?token=' . urlencode($verify_token) . '" style="display: inline-block; padding: 12px 24px; background-color: #2e7d32; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; border-radius: 5px; margin: 20px 0;">Verify Email</a>
+                <p style="color: #666666; font-size: 14px; margin: 20px 0 0;">
+                    If the button above doesn’t work, copy and paste this link into your browser:<br>
+                    <a href="http://localhost/capstone-admin/verify-email.php?token=' . urlencode($verify_token) . '" style="color: #2e7d32; text-decoration: underline;">http://localhost/capstone-admin/verify-email.php?token=' . urlencode($verify_token) . '</a>
+                </p>
+                <p style="color: #666666; font-size: 14px; margin: 20px 0 0;">
+                    If you did not request this verification, please ignore this email or contact support.
+                </p>
+            </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+            <td style="padding: 20px; text-align: center; background-color: #f4f4f4; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;">
+                <p style="color: #666666; font-size: 12px; margin: 0;">
+                    © ' . date('Y') . ' Bulacan Polytechnic College. All rights reserved.<br>
+                    For support, contact us at <a href="mailto:support@bpc.edu" style="color: #2e7d32; text-decoration: underline;">support@bpc.edu</a>.
+                </p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+';
 
             $mail->Body = $email_template;
+            $mail->AltBody = "Hi " . htmlspecialchars($row['firstname'], ENT_QUOTES, 'UTF-8') . ",\n\nPlease click the link below to verify your email address (expires in 24 hours):\n\nhttp://localhost/capstone-admin/verify-email.php?token=" . urlencode($verify_token) . "\n\nIf you did not request this verification, please ignore this email or contact support.\n\nBest regards,\nBulacan Polytechnic College Registrar";
             $mail->send();
 
             // Update last request time for rate limiting
@@ -102,3 +144,4 @@ if (isset($_POST['resend_email_verify_btn'])) {
 
 // Close database connection
 $conn->close();
+?>

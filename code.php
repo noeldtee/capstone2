@@ -17,15 +17,15 @@ if (isset($_POST['register_btn'])) {
     // Initialize array to track invalid fields
     $data['invalid_fields'] = [];
 
-    // Validate required fields
-    $required = ['firstname', 'middlename', 'lastname', 'studentid', 'year_id', 'course_id', 'year_level', 'section_id', 'number', 'birthdate', 'gender', 'email', 'password', 'confirm_password', 'terms', 'role'];
+    // Validate required fields (excluding middlename)
+    $required = ['firstname', 'lastname', 'studentid', 'year_id', 'course_id', 'year_level', 'section_id', 'number', 'birthdate', 'gender', 'email', 'password', 'confirm_password', 'terms', 'role'];
     foreach ($required as $field) {
         if (empty($data[$field])) {
             $form_data = $data;
             unset($form_data['password']);
             unset($form_data['confirm_password']);
             $_SESSION['form_data'] = $form_data;
-            redirect('register.php', 'All fields are mandatory.', 'danger');
+            redirect('register.php', 'All required fields are mandatory.', 'danger');
             exit;
         }
     }
@@ -226,7 +226,7 @@ if (isset($_POST['register_btn'])) {
         $fileName = time() . "_" . basename($profile['name']);
         $target = "assets/images/" . $fileName;
         if (!file_exists('assets/images')) {
-            mkdir('assets/images', 0777, true);
+            mkdir('assets/images', 0755, true);
         }
         if (move_uploaded_file($profile['tmp_name'], $target)) {
             $profilePath = $target;
@@ -250,7 +250,7 @@ if (isset($_POST['register_btn'])) {
     $studentid = $data['studentid'];
     $firstname = $data['firstname'];
     $role = $data['role'];
-    $middlename = $data['middlename'];
+    $middlename = $data['middlename'] ?? ''; // Middle name is optional
     $lastname = $data['lastname'];
     $email = $data['email'];
     $number = $data['number'];
@@ -260,6 +260,8 @@ if (isset($_POST['register_btn'])) {
     $terms = $data['terms'] ? 1 : 0;
     $verify_status = 0;
 
+    // Log the role value before insertion for debugging
+    error_log("Role value before insertion: role=$role");
 
     // Log before insertion
     error_log("Inserting user: studentid=$studentid, email=$email, role=$role, section_id={$data['section_id']}, year_id={$data['year_id']}");
@@ -276,6 +278,15 @@ if (isset($_POST['register_btn'])) {
     if ($stmt->execute()) {
         $inserted_id = $stmt->insert_id;
         error_log("User inserted successfully: ID=$inserted_id, studentid=$studentid, role=$role");
+
+        // Verify the inserted role by querying the database
+        $verify_stmt = $conn->prepare("SELECT role FROM users WHERE id = ?");
+        $verify_stmt->bind_param("i", $inserted_id);
+        $verify_stmt->execute();
+        $result = $verify_stmt->get_result();
+        $inserted_user = $result->fetch_assoc();
+        error_log("Inserted role in database: role=" . $inserted_user['role']);
+        $verify_stmt->close();
 
         // Clear form data from session on successful registration
         unset($_SESSION['form_data']);

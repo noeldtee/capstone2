@@ -30,12 +30,23 @@ $stmt = $conn->prepare("UPDATE users SET verify_status = 1, verify_token = NULL 
 $stmt->bind_param("i", $user_id);
 
 if ($stmt->execute()) {
-    // Insert notification for admin
-    $message = "New user verified: {$firstname} {$lastname}";
-    $link = "view-user.php?id={$user_id}"; // Adjust to your actual user view page
-    $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
-    $stmt->bind_param("iss", $user_id, $message, $link);
+    // Fetch all admins
+    $stmt = $conn->prepare("SELECT id FROM users WHERE role = 'admin'");
     $stmt->execute();
+    $admin_result = $stmt->get_result();
+    $admins = [];
+    while ($row = $admin_result->fetch_assoc()) {
+        $admins[] = $row['id'];
+    }
+
+    // Insert notification for each admin
+    $message = "New user verified: {$firstname} {$lastname}";
+    $link = "students.php?id={$user_id}"; // Adjust to your actual user view page
+    $stmt = $conn->prepare("INSERT INTO admin_notifications (admin_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
+    foreach ($admins as $admin_id) {
+        $stmt->bind_param("iss", $admin_id, $message, $link);
+        $stmt->execute();
+    }
 
     // Log to action_logs for auditing
     logAction($conn, 'verify_email', 'user', "User ID {$user_id} verified email", $_SERVER['REMOTE_ADDR']);

@@ -40,7 +40,7 @@ if ($user_id) {
 
 // Define base path for assets as an absolute URL relative to the web root
 $base_path = '/capstone-admin/'; // Absolute path from web root
-$default_profile = $base_path . 'assets/images/default_profile.png';
+$default_profile = $base_path . 'assets/images/default_profile.jpg';
 
 // Handle profile image
 if ($user['profile']) {

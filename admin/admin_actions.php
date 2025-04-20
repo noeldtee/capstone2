@@ -23,7 +23,6 @@ switch ($action) {
         $lastname = validate($_POST['lastname']);
         $email = validate($_POST['email']);
         $number = validate($_POST['number']);
-        $profile = '../assets/images/default_profile.png'; // Hardcoded default
         $password = validate($_POST['password']);
         $role = validate($_POST['role']);
         $is_ban = (int)validate($_POST['is_ban']);
@@ -62,13 +61,67 @@ switch ($action) {
             redirect('admin.php', 'Invalid status.', 'danger');
         }
 
+        // Handle profile image upload
+        $profile = null; // Default to NULL
+        if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['profile_image'];
+            $allowed_types = ['image/jpeg', 'image/png'];
+            $max_size = 2 * 1024 * 1024; // 2MB
+
+            // Validate file type
+            if (!in_array($file['type'], $allowed_types)) {
+                redirect('admin.php?' . http_build_query($_GET), 'Only JPG and PNG files are allowed.', 'danger');
+            }
+
+            // Validate file size
+            if ($file['size'] > $max_size) {
+                redirect('admin.php?' . http_build_query($_GET), 'File size must not exceed 2MB.', 'danger');
+            }
+
+            // Generate unique filename (using a temporary ID placeholder since we don't have the user ID yet)
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $filename = 'profile_new_' . time() . '.' . $ext;
+            $upload_dir = '../assets/images/';
+            $upload_path = $upload_dir . $filename;
+            $db_path = 'assets/images/' . $filename;
+
+            // Move the uploaded file
+            if (move_uploaded_file($file['tmp_name'], $upload_path)) {
+                $profile = $db_path;
+            } else {
+                redirect('admin.php?' . http_build_query($_GET), 'Failed to upload profile image.', 'danger');
+            }
+        }
+
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
+        // Insert the user and get the inserted ID
         $stmt = $conn->prepare("INSERT INTO users (firstname, lastname, email, number, profile, password, role, is_ban, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         $stmt->bind_param("sssssssi", $firstname, $lastname, $email, $number, $profile, $hashed_password, $role, $is_ban);
         if ($stmt->execute()) {
+            $user_id = $stmt->insert_id; // Get the ID of the newly inserted user
+
+            // If a profile image was uploaded, rename it to include the user ID
+            if ($profile) {
+                $ext = pathinfo($profile, PATHINFO_EXTENSION);
+                $new_filename = 'profile_' . $user_id . '_' . time() . '.' . $ext;
+                $new_upload_path = $upload_dir . $new_filename;
+                $new_db_path = 'assets/images/' . $new_filename;
+
+                if (rename($upload_path, $new_upload_path)) {
+                    // Update the database with the new profile path
+                    $stmt_update = $conn->prepare("UPDATE users SET profile = ? WHERE id = ?");
+                    $stmt_update->bind_param("si", $new_db_path, $user_id);
+                    $stmt_update->execute();
+                    $stmt_update->close();
+                }
+            }
             redirect('admin.php?' . http_build_query($_GET), 'Admin added successfully.', 'success');
         } else {
+            // If insertion fails and an image was uploaded, clean up the uploaded file
+            if ($profile && file_exists($upload_path)) {
+                unlink($upload_path);
+            }
             redirect('admin.php?' . http_build_query($_GET), 'Failed to add admin: ' . $stmt->error, 'danger');
         }
         $stmt->close();
@@ -87,7 +140,7 @@ switch ($action) {
         $lastname = validate($_POST['lastname']);
         $email = validate($_POST['email']);
         $number = validate($_POST['number']);
-        $profile = '../assets/images/default_profile.png'; // Hardcoded default
+        $current_profile = validate($_POST['profile']);
         $password = isset($_POST['password']) ? trim($_POST['password']) : '';
         $role = validate($_POST['role']);
         $is_ban = (int)validate($_POST['is_ban']);
@@ -126,6 +179,43 @@ switch ($action) {
             redirect('admin.php?' . http_build_query($_GET), 'Invalid status.', 'danger');
         }
 
+        // Handle profile image upload
+        $profile = $current_profile; // Default to current profile
+        if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['profile_image'];
+            $allowed_types = ['image/jpeg', 'image/png'];
+            $max_size = 2 * 1024 * 1024; // 2MB
+
+            // Validate file type
+            if (!in_array($file['type'], $allowed_types)) {
+                redirect('admin.php?' . http_build_query($_GET), 'Only JPG and PNG files are allowed.', 'danger');
+            }
+
+            // Validate file size
+            if ($file['size'] > $max_size) {
+                redirect('admin.php?' . http_build_query($_GET), 'File size must not exceed 2MB.', 'danger');
+            }
+
+            // Generate unique filename
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $filename = 'profile_' . $id . '_' . time() . '.' . $ext;
+            $upload_dir = '../assets/images/';
+            $upload_path = $upload_dir . $filename;
+            $db_path = 'assets/images/' . $filename;
+
+            // Move the uploaded file
+            if (move_uploaded_file($file['tmp_name'], $upload_path)) {
+                // Delete old profile image if it exists
+                if ($current_profile && file_exists('../' . $current_profile)) {
+                    unlink('../' . $current_profile);
+                }
+                $profile = $db_path;
+            } else {
+                redirect('admin.php?' . http_build_query($_GET), 'Failed to upload profile image.', 'danger');
+            }
+        }
+
+        // Update the user record
         if (!empty($password)) {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $conn->prepare("UPDATE users SET firstname = ?, lastname = ?, email = ?, number = ?, profile = ?, password = ?, role = ?, is_ban = ?, updated_at = NOW() WHERE id = ?");
@@ -149,6 +239,21 @@ switch ($action) {
         }
 
         $id = (int)validate($_POST['id']);
+        
+        // Fetch the current profile image to delete it if it exists
+        $stmt = $conn->prepare("SELECT profile FROM users WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result->num_rows > 0) {
+            $user = $result->fetch_assoc();
+            $profile = $user['profile'];
+            if ($profile && file_exists('../' . $profile)) {
+                unlink('../' . $profile);
+            }
+        }
+        $stmt->close();
+
         $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
         $stmt->bind_param("i", $id);
         if ($stmt->execute()) {
@@ -167,8 +272,7 @@ switch ($action) {
         error_reporting(E_ALL);
 
         if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-            $response = [' reflective journal
-status' => 400, 'message' => 'Invalid admin ID.'];
+            $response = ['status' => 400, 'message' => 'Invalid admin ID.'];
             header('Content-Type: application/json');
             echo json_encode($response);
             exit;

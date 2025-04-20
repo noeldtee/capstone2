@@ -75,19 +75,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 redirect('settings.php', 'Only image files are allowed for profile picture.', 'danger');
                             } else {
                                 $fileName = time() . "_" . basename($profile['name']);
-                                $target = "assets/images/" . $fileName;
-                                if (!file_exists('assets/images')) {
-                                    if (!mkdir('assets/images', 0777, true)) {
-                                        error_log("Failed to create directory: assets/images");
+                                // Use the correct relative path from capstone-admin/users/ to capstone-admin/assets/images/
+                                $targetDir = "../assets/images/";
+                                $target = $targetDir . $fileName;
+                                // Check if the directory exists
+                                if (!file_exists($targetDir)) {
+                                    if (!mkdir($targetDir, 0777, true)) {
+                                        error_log("Failed to create directory: $targetDir");
                                         redirect('settings.php', 'Failed to create directory for profile picture.', 'danger');
                                     }
                                 }
-                                if (!is_writable('assets/images')) {
-                                    error_log("Directory assets/images is not writable");
+                                // Check if the directory is writable
+                                if (!is_writable($targetDir)) {
+                                    error_log("Directory $targetDir is not writable");
                                     redirect('settings.php', 'Directory for profile pictures is not writable.', 'danger');
                                 } else {
                                     if (move_uploaded_file($profile['tmp_name'], $target)) {
-                                        $profilePath = $target;
+                                        // Store the path relative to capstone-admin/ in the database
+                                        $profilePath = "assets/images/" . $fileName;
                                         // Delete old profile picture if it's not the default
                                         if ($current_profile !== 'assets/images/default_profile.png' && file_exists($current_profile)) {
                                             unlink($current_profile);
@@ -329,8 +334,8 @@ include('includes/header.php');
                     <div class="mb-3 text-center">
                         <label for="profile" class="form-label">Profile Picture</label>
                         <input type="file" name="profile" id="profile" class="form-control" accept="image/*" onchange="previewImage(event)">
-                        <img id="profile-preview" src="<?= htmlspecialchars($user_data['profile']); ?>" alt="Profile Picture" style="max-width: 200px; margin-top: 10px; <?= $user_data['profile'] ? '' : 'display: none;'; ?>">
-                        <button type="button" id="remove-profile" class="btn btn-danger btn-sm mt-2" style="display: <?= $user_data['profile'] ? 'inline-block' : 'none'; ?>;" onclick="removeImage()">Remove Image</button>
+                        <img id="profile-preview" src="<?php echo $user_data['profile'] ? '../' . htmlspecialchars($user_data['profile']) : '../assets/images/default_profile.png'; ?>" alt="Profile Picture" style="max-width: 200px; margin-top: 10px; <?php echo $user_data['profile'] ? '' : 'display: none;'; ?>">
+                        <button type="button" id="remove-profile" class="btn btn-danger btn-sm mt-2" style="display: <?php echo $user_data['profile'] ? 'inline-block' : 'none'; ?>;" onclick="removeImage()">Remove Image</button>
                         <small class="form-text text-muted">Leave blank to keep current picture. (Max 2MB)</small>
                     </div>
                     <!-- First Name, Middle Name, Last Name -->
@@ -544,10 +549,10 @@ document.getElementById('personalInfoModal').addEventListener('hidden.bs.modal',
     document.querySelector('#personalInfoForm input[name="birthdate"]').value = '<?= htmlspecialchars($user_data['birthdate']); ?>';
     document.querySelector('#personalInfoForm select[name="gender"]').value = '<?= htmlspecialchars($user_data['gender']); ?>';
     // Reset profile picture preview
-    if (profilePreview.src !== '<?= htmlspecialchars($user_data['profile']); ?>') {
-        profilePreview.src = '<?= htmlspecialchars($user_data['profile']); ?>';
-        profilePreview.style.display = '<?= $user_data['profile'] ? 'block' : 'none'; ?>';
-        removeBtn.style.display = '<?= $user_data['profile'] ? 'inline-block' : 'none'; ?>';
+    if (profilePreview.src !== '<?php echo $user_data['profile'] ? '../' . htmlspecialchars($user_data['profile']) : '../assets/images/default_profile.png'; ?>') {
+        profilePreview.src = '<?php echo $user_data['profile'] ? '../' . htmlspecialchars($user_data['profile']) : '../assets/images/default_profile.png'; ?>';
+        profilePreview.style.display = '<?php echo $user_data['profile'] ? 'block' : 'none'; ?>';
+        removeBtn.style.display = '<?php echo $user_data['profile'] ? 'inline-block' : 'none'; ?>';
     }
     // Reset submit button
     const submitButton = document.getElementById('personalInfoSubmit');

@@ -31,10 +31,9 @@ unset($_SESSION['form_data']);
                     <div class="card-body">
                         <form action="/capstone-admin/code.php" method="POST" enctype="multipart/form-data">
 
-
                             <!-- Profile Upload -->
                             <div class="mb-3 text-center">
-                                <label for="profile" class="form-label">Profile Picture</label>
+                                <label for="profile" class="form-label">Profile Picture (Optional)</label>
                                 <input type="file" name="profile" id="profile" class="form-control" accept="image/*" max="2000000" onchange="previewImage(event)">
                                 <img id="profile-preview" src="#" alt="Preview" style="display: none; max-width: 200px; margin-top: 10px;">
                                 <button type="button" id="remove-profile" class="btn btn-danger btn-sm mt-2" style="display: none;" onclick="removeImage()">Remove Image</button>
@@ -61,8 +60,8 @@ unset($_SESSION['form_data']);
                                     <label for="firstname">First Name</label>
                                 </div>
                                 <div class="col-md-4 form-floating">
-                                    <input type="text" name="middlename" class="form-control" id="middlename" placeholder="Middle Name" required value="<?= htmlspecialchars($form_data['middlename'] ?? '') ?>">
-                                    <label for="middlename">Middle Name</label>
+                                    <input type="text" name="middlename" class="form-control" id="middlename" placeholder="Middle Name (Optional)" value="<?= htmlspecialchars($form_data['middlename'] ?? '') ?>">
+                                    <label for="middlename">Middle Name (Optional)</label>
                                 </div>
                                 <div class="col-md-4 form-floating">
                                     <input type="text" name="lastname" class="form-control" id="lastname" placeholder="Last Name" required value="<?= htmlspecialchars($form_data['lastname'] ?? '') ?>">

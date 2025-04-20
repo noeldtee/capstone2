@@ -27,16 +27,57 @@ function send_password_reset($firstname, $email, $reset_token) {
         $mail->isHTML(true);
         $mail->Subject = 'Password Reset Request from Bulacan Polytechnic College Registrar';
 
-        $email_template = "
-            <h2>Password Reset</h2>
-            <p>Hi " . htmlspecialchars($firstname, ENT_QUOTES, 'UTF-8') . ", We received a request to reset your password. Please click the link below to reset it:</p>
-            <br><br>
-            <a href='http://localhost/capstone-admin/reset-password.php?token=" . urlencode($reset_token) . "'>Reset Password</a>
-            <p>This link will expire in 1 hour. If you didn’t request this, ignore this email.</p>
-            <p><strong>Note for Development:</strong> If you are testing locally, copy and paste this link into your browser on the machine running the local server (e.g., XAMPP/WAMP on port 80).</p>
-        ";
+        $email_template = '
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f4f4;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+        <!-- Header -->
+        <tr>
+            <td style="padding: 20px; text-align: center; background-color: #2e7d32; border-top-left-radius: 10px; border-top-right-radius: 10px;">
+                <img src="https://9b67-120-29-78-198.ngrok-free.app/capstone-admin/assets/images/logo.png" alt="BPC Logo" width="80" height="76" style="display: block; margin: 0 auto;">
+                <h2 style="color: #ffffff; margin: 10px 0 0; font-size: 24px;">Bulacan Polytechnic College Registrar</h2>
+            </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+            <td style="padding: 30px; text-align: center;">
+                <h3 style="color: #2e7d32; margin: 0 0 15px; font-size: 20px;">Password Reset Request</h3>
+                <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 20px;">
+                    Hi ' . htmlspecialchars($firstname, ENT_QUOTES, 'UTF-8') . ',<br>
+                    We received a request to reset your password. Please click the button below to reset it. This link will expire in 1 hour.
+                </p>
+                <a href="http://localhost/capstone-admin/reset-password.php?token=' . urlencode($reset_token) . '" style="display: inline-block; padding: 12px 24px; background-color: #2e7d32; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; border-radius: 5px; margin: 20px 0;">Reset Password</a>
+                <p style="color: #666666; font-size: 14px; margin: 20px 0 0;">
+                    If the button above doesn’t work, copy and paste this link into your browser:<br>
+                    <a href="http://localhost/capstone-admin/reset-password.php?token=' . urlencode($reset_token) . '" style="color: #2e7d32; text-decoration: underline;">http://localhost/capstone-admin/reset-password.php?token=' . urlencode($reset_token) . '</a>
+                </p>
+                <p style="color: #666666; font-size: 14px; margin: 20px 0 0;">
+                    If you did not request this password reset, please ignore this email or contact support.
+                </p>
+            </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+            <td style="padding: 20px; text-align: center; background-color: #f4f4f4; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;">
+                <p style="color: #666666; font-size: 12px; margin: 0;">
+                    © ' . date('Y') . ' Bulacan Polytechnic College. All rights reserved.<br>
+                    For support, contact us at <a href="mailto:support@bpc.edu" style="color: #2e7d32; text-decoration: underline;">support@bpc.edu</a>.
+                </p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+';
 
         $mail->Body = $email_template;
+        $mail->AltBody = "Hi " . htmlspecialchars($firstname, ENT_QUOTES, 'UTF-8') . ",\n\nWe received a request to reset your password. Please click the link below to reset it (expires in 1 hour):\n\nhttp://localhost/capstone-admin/reset-password.php?token=" . urlencode($reset_token) . "\n\nIf you did not request this password reset, please ignore this email or contact support.\n\nBest regards,\nBulacan Polytechnic College Registrar";
         $mail->send();
     } catch (Exception $e) {
         throw new Exception("Failed to send password reset email: " . $e->getMessage());
@@ -164,7 +205,7 @@ if (isset($_POST['password_update'])) {
             exit();
         }
 
-        // Validate password requirements (same as register.php)
+        // Validate password requirements (at least 8 characters, 1 number, 1 special character)
         if (strlen($new_password) < 8 || !preg_match('/[0-9]/', $new_password) || !preg_match('/[!@#$%^&*(),.?":{}|<>]/', $new_password)) {
             redirect("reset-password.php?token=" . urlencode($reset_token) . "&email=" . $safe_email, 'Password must be at least 8 characters long and include at least one number and one special character (e.g., !@#$%^&*).', 'danger');
             exit();
@@ -192,3 +233,4 @@ if (isset($_POST['password_update'])) {
 if ($conn) {
     $conn->close();
 }
+?>

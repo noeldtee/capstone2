@@ -10,7 +10,7 @@ $offset = ($page - 1) * $limit;
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $role_filter = isset($_GET['role']) ? trim($_GET['role']) : '';
 $status_filter = isset($_GET['status']) ? trim($_GET['status']) : '';
-$verify_filter = isset($_GET['verify_status']) ? trim($_GET['verify_status']) : ''; // New filter for verification status
+$verify_filter = isset($_GET['verify_status']) ? trim($_GET['verify_status']) : '';
 
 $sort_by = isset($_GET['sort_by']) ? trim($_GET['sort_by']) : 'full_name';
 $sort_order = isset($_GET['sort_order']) && in_array(strtoupper($_GET['sort_order']), ['ASC', 'DESC']) ? strtoupper($_GET['sort_order']) : 'ASC';
@@ -148,14 +148,14 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                 </div>
                 <div class="col-md-2">
                     <select name="status" class="form-select form-select-sm">
-                        <option value="">All Statuses</option>
+                        <option value="">All Status</option>
                         <option value="0" <?php echo $status_filter === '0' ? 'selected' : ''; ?>>Active</option>
                         <option value="1" <?php echo $status_filter === '1' ? 'selected' : ''; ?>>Inactive</option>
                     </select>
                 </div>
                 <div class="col-md-2">
                     <select name="verify_status" class="form-select form-select-sm">
-                        <option value="">All Verification Statuses</option>
+                        <option value="">All Verification Status</option>
                         <option value="1" <?php echo $verify_filter === '1' ? 'selected' : ''; ?>>Verified</option>
                         <option value="0" <?php echo $verify_filter === '0' ? 'selected' : ''; ?>>Not Verified</option>
                     </select>
@@ -189,7 +189,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                             <th>School Year</th>
                             <th>Year Level</th>
                             <th>Status</th>
-                            <th>Verification Status</th> <!-- New Column -->
+                            <th>Verification Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -199,7 +199,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                         <?php else: ?>
                             <?php foreach ($users as $user): ?>
                                 <tr>
-                                    <td><img src="<?php echo htmlspecialchars($user['profile'] ?? '../assets/images/default_profile.png'); ?>" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%;"></td>
+                                    <td><img src="<?php echo htmlspecialchars($user['profile'] ? '../' . $user['profile'] : '../assets/images/default_profile.png'); ?>" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%;"></td>
                                     <td><?php echo htmlspecialchars($user['full_name'] ?? 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($user['studentid']); ?></td>
                                     <td><?php echo htmlspecialchars($user['email']); ?></td>
@@ -256,11 +256,11 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                         <small class="form-text text-muted">Must start with "MA" followed by numbers (e.g., MA1231232).</small>
                     </div>
                     <div class="mb-3">
-                        <label for="addFirstName" class="form-label">First Name</label>
+                        <label for="addFirstName" class="form150-label">First Name</label>
                         <input type="text" class="form-control" id="addFirstName" name="firstname" required>
                     </div>
                     <div class="mb-3">
-                        <label for="addMiddleName" class="form-label">Middle Name</label>
+                        <label for="addMiddleName" class="form-label">Middle Name (Optional)</label>
                         <input type="text" class="form-control" id="addMiddleName" name="middlename">
                     </div>
                     <div class="mb-3">
@@ -432,7 +432,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                         <input type="text" class="form-control" id="editFirstName" name="firstname" required>
                     </div>
                     <div class="mb-3">
-                        <label for="editMiddleName" class="form-label">Middle Name</label>
+                        <label for="editMiddleName" class="form-label">Middle Name (Optional)</label>
                         <input type="text" class="form-control" id="editMiddleName" name="middlename">
                     </div>
                     <div class="mb-3">
@@ -486,6 +486,13 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                             <option value="">Select Role</option>
                             <option value="student">Student</option>
                             <option value="alumni">Alumni</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editVerifyStatus" class="form-label">Verification Status</label>
+                        <select class="form-select" id="editVerifyStatus" name="verify_status" required>
+                            <option value="1">Verified</option>
+                            <option value="0">Not Verified</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -796,8 +803,8 @@ document.querySelectorAll('.edit-user-btn').forEach(button => {
                     document.getElementById('editCourse').value = user.course_id || '';
                     document.getElementById('editYearLevel').value = user.year_level || '';
                     document.getElementById('editRole').value = user.role;
+                    document.getElementById('editVerifyStatus').value = user.verify_status;
                     document.getElementById('editIsBan').value = user.is_ban;
-                    document.getElementWithId('editVerifyStatus').value = user.verify_status;
                     document.getElementById('editTerms').checked = user.terms == 1;
 
                     if (user.course_id) {
