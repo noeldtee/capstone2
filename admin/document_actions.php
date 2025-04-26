@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require '../config/function.php';
 
 // Check if user is logged in and authorized
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar', 'cashier'])) {
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['registrar', 'staff', 'cashier'])) {
     $_SESSION['message'] = 'Unauthorized access.';
     $_SESSION['message_type'] = 'error';
     header('Location: documents.php');
@@ -27,6 +27,7 @@ try {
             $form_needed = isset($_POST['form_needed']) ? (int)validate($_POST['form_needed']) : 0;
             $is_active = isset($_POST['is_active']) ? (int)validate($_POST['is_active']) : 1;
             $restrict_per_semester = isset($_POST['restrict_per_semester']) ? (int)validate($_POST['restrict_per_semester']) : 0;
+            $requirements = validate($_POST['requirements'] ?? '');
 
             // Validate unit_price
             if (!is_numeric($unit_price) || $unit_price < 0) {
@@ -51,12 +52,12 @@ try {
             $stmt->close();
 
             // Insert document
-            $stmt = $conn->prepare("INSERT INTO documents (name, description, unit_price, form_needed, is_active, restrict_per_semester, created_at) 
-                                    VALUES (?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->bind_param("ssdiii", $name, $description, $unit_price, $form_needed, $is_active, $restrict_per_semester);
+            $stmt = $conn->prepare("INSERT INTO documents (name, description, unit_price, form_needed, is_active, restrict_per_semester, requirements, created_at) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt->bind_param("ssdiiis", $name, $description, $unit_price, $form_needed, $is_active, $restrict_per_semester, $requirements);
             if ($stmt->execute()) {
                 $document_id = $stmt->insert_id;
-                logAction($conn, "Document Added", "Document ID: $document_id", "Name: $name, Price: ₱$unit_price, Form Needed: " . ($form_needed ? 'Yes' : 'No') . ", Status: " . ($is_active ? 'Active' : 'Inactive') . ", Semester Restriction: " . ($restrict_per_semester ? 'Restricted' : 'Not Restricted'));
+                logAction($conn, "Document Added", "Document ID: $document_id", "Name: $name, Price: ₱$unit_price, Form Needed: " . ($form_needed ? 'Yes' : 'No') . ", Status: " . ($is_active ? 'Active' : 'Inactive') . ", Semester Restriction: " . ($restrict_per_semester ? 'Restricted' : 'Not Restricted') . ", Requirements: " . ($requirements ?: 'None'));
                 $_SESSION['message'] = 'Document added successfully.';
                 $_SESSION['message_type'] = 'success';
             } else {
@@ -75,6 +76,7 @@ try {
             $form_needed = isset($_POST['form_needed']) ? (int)validate($_POST['form_needed']) : 0;
             $is_active = isset($_POST['is_active']) ? (int)validate($_POST['is_active']) : 1;
             $restrict_per_semester = isset($_POST['restrict_per_semester']) ? (int)validate($_POST['restrict_per_semester']) : 0;
+            $requirements = validate($_POST['requirements'] ?? '');
 
             // Validate unit_price and ID
             if ($id <= 0) {
@@ -105,12 +107,12 @@ try {
             $stmt->close();
 
             // Update document
-            $stmt = $conn->prepare("UPDATE documents SET name = ?, description = ?, unit_price = ?, form_needed = ?, is_active = ?, restrict_per_semester = ?, updated_at = NOW() 
+            $stmt = $conn->prepare("UPDATE documents SET name = ?, description = ?, unit_price = ?, form_needed = ?, is_active = ?, restrict_per_semester = ?, requirements = ?, updated_at = NOW() 
                                     WHERE id = ?");
-            $stmt->bind_param("ssdiiii", $name, $description, $unit_price, $form_needed, $is_active, $restrict_per_semester, $id);
+            $stmt->bind_param("ssdiiisi", $name, $description, $unit_price, $form_needed, $is_active, $restrict_per_semester, $requirements, $id);
             if ($stmt->execute()) {
                 if ($stmt->affected_rows > 0) {
-                    logAction($conn, "Document Edited", "Document ID: $id", "Name: $name, Price: ₱$unit_price, Form Needed: " . ($form_needed ? 'Yes' : 'No') . ", Status: " . ($is_active ? 'Active' : 'Inactive') . ", Semester Restriction: " . ($restrict_per_semester ? 'Restricted' : 'Not Restricted'));
+                    logAction($conn, "Document Edited", "Document ID: $id", "Name: $name, Price: ₱$unit_price, Form Needed: " . ($form_needed ? 'Yes' : 'No') . ", Status: " . ($is_active ? 'Active' : 'Inactive') . ", Semester Restriction: " . ($restrict_per_semester ? 'Restricted' : 'Not Restricted') . ", Requirements: " . ($requirements ?: 'None'));
                     $_SESSION['message'] = 'Document updated successfully.';
                     $_SESSION['message_type'] = 'success';
                 } else {
@@ -125,8 +127,8 @@ try {
             exit;
 
         case 'delete':
-            if ($_SESSION['role'] !== 'admin') {
-                $_SESSION['message'] = 'Only admins can delete documents.';
+            if ($_SESSION['role'] !== 'registrar') {
+                $_SESSION['message'] = 'Only registrars can delete documents.';
                 $_SESSION['message_type'] = 'error';
                 header('Location: documents.php');
                 exit;
@@ -195,7 +197,7 @@ try {
                 echo json_encode(['status' => 'error', 'message' => 'Invalid document ID.']);
                 exit;
             }
-            $stmt = $conn->prepare("SELECT id, name, description, unit_price, form_needed, is_active, restrict_per_semester 
+            $stmt = $conn->prepare("SELECT id, name, description, unit_price, form_needed, is_active, restrict_per_semester, requirements 
                                     FROM documents 
                                     WHERE id = ?");
             $stmt->bind_param("i", $id);

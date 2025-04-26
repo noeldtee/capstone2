@@ -13,8 +13,8 @@ use PHPMailer\PHPMailer\Exception;
 
 require '../vendor/autoload.php';
 
-// Allow admin and registrar for most actions, except edit and delete
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
+// Allow registrar and staff for most actions, except edit and delete
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || !in_array($_SESSION['role'], ['registrar', 'staff'])) {
     if (isset($_GET['action']) && in_array($_GET['action'], ['get', 'get_sections'])) {
         // For AJAX requests, return JSON instead of redirecting
         while (ob_get_level()) {
@@ -24,26 +24,26 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || !in_array($_SES
         echo json_encode(['status' => 401, 'message' => 'Unauthorized access.']);
         exit;
     }
-    redirect('../index.php', 'You must be logged in as an admin or registrar to perform this action.', 'danger');
+    redirect('../index.php', 'You must be logged in as a registrar or staff to perform this action.', 'danger');
 }
 
-// Restrict edit to admin only
-if (isset($_POST['action']) && $_POST['action'] === 'edit' && $_SESSION['role'] !== 'admin') {
+// Restrict edit to registrar only
+if (isset($_POST['action']) && $_POST['action'] === 'edit' && $_SESSION['role'] !== 'registrar') {
     while (ob_get_level()) {
         ob_end_clean();
     }
     header('Content-Type: application/json');
-    echo json_encode(['status' => 403, 'message' => 'Only admins can edit users.']);
+    echo json_encode(['status' => 403, 'message' => 'Only registrars can edit users.']);
     exit;
 }
 
-// Restrict delete to admin only
-if (isset($_POST['action']) && $_POST['action'] === 'delete' && $_SESSION['role'] !== 'admin') {
+// Restrict delete to registrar only
+if (isset($_POST['action']) && $_POST['action'] === 'delete' && $_SESSION['role'] !== 'registrar') {
     while (ob_get_level()) {
         ob_end_clean();
     }
     header('Content-Type: application/json');
-    echo json_encode(['status' => 403, 'message' => 'Only admins can delete users.']);
+    echo json_encode(['status' => 403, 'message' => 'Only registrars can delete users.']);
     exit;
 }
 

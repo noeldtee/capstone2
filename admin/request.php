@@ -3,8 +3,8 @@ $page_title = "Document Request Management";
 require 'includes/header.php';
 
 // Check if user is logged in
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
-    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['registrar', 'staff'])) {
+    redirect('../index.php', 'Please log in as a registrar or staff to perform this action.', 'warning');
     exit();
 }
 

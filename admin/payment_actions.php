@@ -13,8 +13,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Check if user is logged in
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar', 'cashier'])) {
-    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['registrar', 'staff', 'cashier'])) {
+    redirect('../index.php', 'Unauthorized Access.', 'warning');
     exit();
 }
 

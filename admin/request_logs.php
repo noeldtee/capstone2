@@ -3,8 +3,8 @@ $page_title = "Request Logs";
 require 'includes/header.php';
 
 // Check if user is logged in
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
-    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['registrar', 'staff'])) {
+    redirect('../index.php', 'Please log in as a registrar or staff to perform this action.', 'warning');
     exit();
 }
 
@@ -158,7 +158,7 @@ while ($row = $archived_result->fetch_assoc()) {
                 <div class="add">
                     <span>All Requested Documents (<?php echo $total_requests; ?> found)</span>
                     <button type="button" class="btn btn-warning btn-sm float-end" onclick="bulkArchive()">Archive Selected</button>
-                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                    <?php if ($_SESSION['role'] === 'registrar'): ?>
                         <button type="button" class="btn btn-danger btn-sm float-end" style="margin-right: 10px;" onclick="bulkDelete()">Delete Selected</button>
                     <?php endif; ?>
                 </div>
@@ -219,7 +219,7 @@ while ($row = $archived_result->fetch_assoc()) {
                                     <td>
                                         <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
                                         <button type="button" class="btn btn-warning btn-sm archive-btn" data-id="<?php echo $request['id']; ?>">Archive</button>
-                                        <?php if ($_SESSION['role'] === 'admin'): ?>
+                                        <?php if ($_SESSION['role'] === 'registrar'): ?>
                                             <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>">Delete</button>
                                         <?php endif; ?>
                                     </td>
@@ -240,7 +240,7 @@ while ($row = $archived_result->fetch_assoc()) {
                             </a>
                         </li>
                         <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                            <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
+                            <li class="page-item <?php echo $i === 'page' ? 'active' : ''; ?>">
                                 <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>"><?php echo $i; ?></a>
                             </li>
                         <?php endfor; ?>
@@ -364,7 +364,7 @@ while ($row = $archived_result->fetch_assoc()) {
                                     <td>
                                         <button type="button" class="btn btn-primary btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $request['id']; ?>">View</button>
                                         <button type="button" class="btn btn-success btn-sm retrieve-btn" data-id="<?php echo $request['id']; ?>">Retrieve</button>
-                                        <?php if ($_SESSION['role'] === 'admin'): ?>
+                                        <?php if ($_SESSION['role'] === 'registrar'): ?>
                                             <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $request['id']; ?>">Delete</button>
                                         <?php endif; ?>
                                     </td>
@@ -445,7 +445,7 @@ while ($row = $archived_result->fetch_assoc()) {
         }
     }
 
-    <?php if ($_SESSION['role'] === 'admin'): ?>
+    <?php if ($_SESSION['role'] === 'registrar'): ?>
         // Bulk delete selected requests
         function bulkDelete() {
             const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
@@ -510,7 +510,7 @@ while ($row = $archived_result->fetch_assoc()) {
         });
     });
 
-    <?php if ($_SESSION['role'] === 'admin'): ?>
+    <?php if ($_SESSION['role'] === 'registrar'): ?>
         // Individual delete function
         document.querySelectorAll('.delete-btn').forEach(button => {
             button.addEventListener('click', function() {

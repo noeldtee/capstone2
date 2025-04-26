@@ -1,18 +1,23 @@
 <?php
+// Start output buffering
+ob_start();
+
+// Disable error display for production
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
-ob_start();
 
 // Include necessary files
 require '../config/function.php';
 require '../config/send_email.php';
-// Include QR code library
 require '../libs/phpqrcode/qrlib.php';
 
 // Check if user is logged in
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar', 'cashier'])) {
-    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !isset($_SESSION['role']) || !in_array($_SESSION['role'], ['registrar', 'staff'])) {
+    $response = ['status' => 'error', 'message' => 'Please log in as a registrar or staff to perform this action.'];
+    ob_end_clean();
+    header('Content-Type: application/json');
+    echo json_encode($response);
     exit();
 }
 
@@ -29,6 +34,11 @@ try {
     // Check database connection
     if (!$conn) {
         throw new Exception('Database connection is not established.');
+    }
+    // Debug: Test a simple query
+    $result = $conn->query("SELECT 1");
+    if (!$result) {
+        throw new Exception('Database query failed: ' . $conn->error);
     }
 
     switch ($action) {
@@ -72,7 +82,6 @@ try {
 
         case 'approve':
             $id = (int)$_POST['id'];
-            // Fetch student details for notification
             $stmt = $conn->prepare("SELECT r.document_type, u.email, u.firstname, u.lastname, u.id AS user_id 
                                     FROM requests r 
                                     JOIN users u ON r.user_id = u.id 
@@ -88,13 +97,11 @@ try {
                 $lastname = $row['lastname'];
                 $user_id = $row['user_id'];
 
-                // Update the request status
                 $stmt = $conn->prepare("UPDATE requests SET status = 'In Process', updated_at = NOW() WHERE id = ? AND status = 'Pending'");
                 $stmt->bind_param("i", $id);
                 if ($stmt->execute() && $stmt->affected_rows > 0) {
                     logAction($conn, 'Approve Request', "Request ID: $id", "Status changed to In Process");
 
-                    // Send approval email
                     $email_result = sendApprovalNotification($student_email, $firstname, $lastname, $document_type, $id);
                     if ($email_result['success']) {
                         logAction($conn, 'Email Sent', "Request ID: $id", "Approval notification sent to $student_email");
@@ -103,7 +110,6 @@ try {
                         logAction($conn, 'Email Failed', "Request ID: $id", "Failed to send approval notification to $student_email: $error_message");
                     }
 
-                    // Insert dashboard notification
                     $message = "Your $document_type (Request ID: $id) has been approved and is now In Process.";
                     $link = "../users/history.php?id=$id";
                     $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
@@ -134,7 +140,6 @@ try {
                 $response = ['status' => 'error', 'message' => 'Rejection reason is required.'];
                 break;
             }
-            // Fetch student details for notification
             $stmt = $conn->prepare("SELECT r.document_type, u.email, u.firstname, u.lastname, u.id AS user_id 
                                     FROM requests r 
                                     JOIN users u ON r.user_id = u.id 
@@ -150,13 +155,11 @@ try {
                 $lastname = $row['lastname'];
                 $user_id = $row['user_id'];
 
-                // Update the request status
                 $stmt = $conn->prepare("UPDATE requests SET status = 'Rejected', rejection_reason = ?, updated_at = NOW() WHERE id = ? AND status = 'Pending'");
                 $stmt->bind_param("si", $rejection_reason, $id);
                 if ($stmt->execute() && $stmt->affected_rows > 0) {
                     logAction($conn, 'Reject Request', "Request ID: $id", "Status changed to Rejected, Reason: $rejection_reason");
 
-                    // Send rejection email
                     $email_result = sendRejectionNotification($student_email, $firstname, $lastname, $document_type, $id, $rejection_reason);
                     if ($email_result['success']) {
                         logAction($conn, 'Email Sent', "Request ID: $id", "Rejection notification sent to $student_email");
@@ -165,7 +168,6 @@ try {
                         logAction($conn, 'Email Failed', "Request ID: $id", "Failed to send rejection notification to $student_email: $error_message");
                     }
 
-                    // Insert dashboard notification
                     $message = "Your $document_type (Request ID: $id) has been rejected. Reason: $rejection_reason";
                     $link = "../users/history.php?id=$id";
                     $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
@@ -191,9 +193,7 @@ try {
 
         case 'mark_ready':
             $id = (int)$_POST['id'];
-            // Generate pickup token
             $pickup_token = bin2hex(random_bytes(16));
-            // Fetch student details for notification
             $stmt = $conn->prepare("SELECT r.document_type, u.email, u.firstname, u.lastname, u.id AS user_id 
                                     FROM requests r 
                                     JOIN users u ON r.user_id = u.id 
@@ -209,22 +209,29 @@ try {
                 $lastname = $row['lastname'];
                 $user_id = $row['user_id'];
 
-                // Update the request status and set pickup token
                 $stmt = $conn->prepare("UPDATE requests SET status = 'Ready to Pickup', pickup_token = ?, updated_at = NOW() WHERE id = ? AND status = 'In Process'");
                 $stmt->bind_param("si", $pickup_token, $id);
                 if ($stmt->execute() && $stmt->affected_rows > 0) {
-                    // Generate QR code
                     $qr_dir = '../Uploads/qrcodes/';
                     if (!file_exists($qr_dir)) {
-                        mkdir($qr_dir, 0777, true);
+                        if (!mkdir($qr_dir, 0755, true)) {
+                            throw new Exception('Failed to create QR code directory.');
+                        }
                     }
                     $qr_file = $qr_dir . "request_$id.png";
-                    $qr_url = "https://bpcsdrs.com/verify_qr.php?token=$pickup_token"; // Update with your domain
-                    QRcode::png($qr_url, $qr_file, QR_ECLEVEL_L, 10);
+                    $qr_url = "https://yourdomain.com/verify_qr.php?token=$pickup_token"; // Update with your domain
+                    try {
+                        QRcode::png($qr_url, $qr_file, QR_ECLEVEL_L, 10);
+                        if (!file_exists($qr_file)) {
+                            throw new Exception('Failed to generate QR code.');
+                        }
+                    } catch (Exception $e) {
+                        logAction($conn, 'QR Code Failed', "Request ID: $id", "Failed to generate QR code: " . $e->getMessage());
+                        throw $e;
+                    }
 
                     logAction($conn, 'Mark Ready', "Request ID: $id", "Status changed to Ready to Pickup");
 
-                    // Send pickup email with QR code
                     $email_result = sendPickupNotification($student_email, $firstname, $lastname, $document_type, $id, $qr_file);
                     if ($email_result['success']) {
                         logAction($conn, 'Email Sent', "Request ID: $id", "Pickup notification sent to $student_email");
@@ -233,7 +240,6 @@ try {
                         logAction($conn, 'Email Failed', "Request ID: $id", "Failed to send pickup notification to $student_email: $error_message");
                     }
 
-                    // Insert dashboard notification
                     $message = "Your $document_type (Request ID: $id) is Ready to Pickup. Please check your email for the QR code.";
                     $link = "../users/history.php?id=$id";
                     $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
@@ -259,7 +265,6 @@ try {
 
         case 'mark_completed':
             $id = (int)$_POST['id'];
-            // Fetch request details
             $stmt = $conn->prepare("SELECT r.document_type, u.id AS user_id 
                                     FROM requests r 
                                     JOIN users u ON r.user_id = u.id 
@@ -272,11 +277,9 @@ try {
                 $document_type = $row['document_type'];
                 $user_id = $row['user_id'];
 
-                // Update the request status and clear pickup token
                 $stmt = $conn->prepare("UPDATE requests SET status = 'Completed', pickup_token = NULL, updated_at = NOW() WHERE id = ? AND status = 'Ready to Pickup'");
                 $stmt->bind_param("i", $id);
                 if ($stmt->execute() && $stmt->affected_rows > 0) {
-                    // Delete QR code file
                     $qr_file = "../Uploads/qrcodes/request_$id.png";
                     if (file_exists($qr_file)) {
                         unlink($qr_file);
@@ -284,7 +287,6 @@ try {
 
                     logAction($conn, 'Mark Completed', "Request ID: $id", "Status changed to Completed");
 
-                    // Insert dashboard notification
                     $message = "Your $document_type (Request ID: $id) has been marked as Completed.";
                     $link = "../users/history.php?id=$id";
                     $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
@@ -332,14 +334,12 @@ try {
                 $lastname = $row['lastname'];
                 $user_id = $row['user_id'];
 
-                // Update each request
                 $update_stmt = $conn->prepare("UPDATE requests SET status = 'In Process', updated_at = NOW() WHERE id = ? AND status = 'Pending'");
                 $update_stmt->bind_param("i", $request_id);
                 if ($update_stmt->execute() && $update_stmt->affected_rows > 0) {
                     $approved_count++;
                     logAction($conn, 'Bulk Approve Request', "Request ID: $request_id", "Status changed to In Process");
 
-                    // Send approval email
                     $email_result = sendApprovalNotification($student_email, $firstname, $lastname, $document_type, $request_id);
                     if ($email_result['success']) {
                         logAction($conn, 'Email Sent', "Request ID: $request_id", "Approval notification sent to $student_email");
@@ -348,7 +348,6 @@ try {
                         logAction($conn, 'Email Failed', "Request ID: $request_id", "Failed to send approval notification to $student_email: $error_message");
                     }
 
-                    // Prepare dashboard notification
                     $notifications[] = [
                         'user_id' => $user_id,
                         'message' => "Your $document_type (Request ID: $request_id) has been approved and is now In Process.",
@@ -359,7 +358,6 @@ try {
             }
             $stmt->close();
 
-            // Insert all notifications
             foreach ($notifications as $notif) {
                 $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
                 $stmt->bind_param("iss", $notif['user_id'], $notif['message'], $notif['link']);
@@ -405,26 +403,32 @@ try {
                 $lastname = $row['lastname'];
                 $user_id = $row['user_id'];
 
-                // Generate pickup token
                 $pickup_token = bin2hex(random_bytes(16));
 
-                // Update each request
                 $update_stmt = $conn->prepare("UPDATE requests SET status = 'Ready to Pickup', pickup_token = ?, updated_at = NOW() WHERE id = ? AND status = 'In Process'");
                 $update_stmt->bind_param("si", $pickup_token, $request_id);
                 if ($update_stmt->execute() && $update_stmt->affected_rows > 0) {
                     $marked_count++;
-                    // Generate QR code
                     $qr_dir = '../Uploads/qrcodes/';
                     if (!file_exists($qr_dir)) {
-                        mkdir($qr_dir, 0777, true);
+                        if (!mkdir($qr_dir, 0755, true)) {
+                            throw new Exception('Failed to create QR code directory.');
+                        }
                     }
                     $qr_file = $qr_dir . "request_$request_id.png";
-                    $qr_url = "https://bpcsdrs.com/verify_qr.php?token=$pickup_token"; // Update with your domain
-                    QRcode::png($qr_url, $qr_file, QR_ECLEVEL_L, 10);
+                    $qr_url = "https://yourdomain.com/verify_qr.php?token=$pickup_token"; // Update with your domain
+                    try {
+                        QRcode::png($qr_url, $qr_file, QR_ECLEVEL_L, 10);
+                        if (!file_exists($qr_file)) {
+                            throw new Exception('Failed to generate QR code.');
+                        }
+                    } catch (Exception $e) {
+                        logAction($conn, 'QR Code Failed', "Request ID: $request_id", "Failed to generate QR code: " . $e->getMessage());
+                        throw $e;
+                    }
 
                     logAction($conn, 'Bulk Mark Ready', "Request ID: $request_id", "Status changed to Ready to Pickup");
 
-                    // Send pickup email with QR code
                     $email_result = sendPickupNotification($student_email, $firstname, $lastname, $document_type, $request_id, $qr_file);
                     if ($email_result['success']) {
                         logAction($conn, 'Email Sent', "Request ID: $request_id", "Pickup notification sent to $student_email");
@@ -433,7 +437,6 @@ try {
                         logAction($conn, 'Email Failed', "Request ID: $request_id", "Failed to send pickup notification to $student_email: $error_message");
                     }
 
-                    // Prepare dashboard notification
                     $notifications[] = [
                         'user_id' => $user_id,
                         'message' => "Your $document_type (Request ID: $request_id) is Ready to Pickup. Please check your email for the QR code.",
@@ -444,7 +447,6 @@ try {
             }
             $stmt->close();
 
-            // Insert all notifications
             foreach ($notifications as $notif) {
                 $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
                 $stmt->bind_param("iss", $notif['user_id'], $notif['message'], $notif['link']);
@@ -487,12 +489,10 @@ try {
                 $document_type = $row['document_type'];
                 $user_id = $row['user_id'];
 
-                // Update each request
                 $update_stmt = $conn->prepare("UPDATE requests SET status = 'Completed', pickup_token = NULL, updated_at = NOW() WHERE id = ? AND status = 'Ready to Pickup'");
                 $update_stmt->bind_param("i", $request_id);
                 if ($update_stmt->execute() && $update_stmt->affected_rows > 0) {
                     $completed_count++;
-                    // Delete QR code file
                     $qr_file = "../Uploads/qrcodes/request_$request_id.png";
                     if (file_exists($qr_file)) {
                         unlink($qr_file);
@@ -500,7 +500,6 @@ try {
 
                     logAction($conn, 'Bulk Mark Completed', "Request ID: $request_id", "Status changed to Completed");
 
-                    // Prepare dashboard notification
                     $notifications[] = [
                         'user_id' => $user_id,
                         'message' => "Your $document_type (Request ID: $request_id) has been marked as Completed.",
@@ -511,7 +510,6 @@ try {
             }
             $stmt->close();
 
-            // Insert all notifications
             foreach ($notifications as $notif) {
                 $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
                 $stmt->bind_param("iss", $notif['user_id'], $notif['message'], $notif['link']);
@@ -562,14 +560,12 @@ try {
                 $lastname = $row['lastname'];
                 $user_id = $row['user_id'];
 
-                // Update each request
                 $update_stmt = $conn->prepare("UPDATE requests SET status = 'Rejected', rejection_reason = ?, updated_at = NOW() WHERE id = ? AND status = 'Pending'");
                 $update_stmt->bind_param("si", $rejection_reason, $request_id);
                 if ($update_stmt->execute() && $update_stmt->affected_rows > 0) {
                     $rejected_count++;
                     logAction($conn, 'Bulk Reject Request', "Request ID: $request_id", "Status changed to Rejected, Reason: $rejection_reason");
 
-                    // Send rejection email
                     $email_result = sendRejectionNotification($student_email, $firstname, $lastname, $document_type, $request_id, $rejection_reason);
                     if ($email_result['success']) {
                         logAction($conn, 'Email Sent', "Request ID: $request_id", "Rejection notification sent to $student_email");
@@ -578,7 +574,6 @@ try {
                         logAction($conn, 'Email Failed', "Request ID: $request_id", "Failed to send rejection notification to $student_email: $error_message");
                     }
 
-                    // Prepare dashboard notification
                     $notifications[] = [
                         'user_id' => $user_id,
                         'message' => "Your $document_type (Request ID: $request_id) has been rejected. Reason: $rejection_reason",
@@ -589,7 +584,6 @@ try {
             }
             $stmt->close();
 
-            // Insert all notifications
             foreach ($notifications as $notif) {
                 $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
                 $stmt->bind_param("iss", $notif['user_id'], $notif['message'], $notif['link']);
@@ -620,12 +614,12 @@ try {
 }
 
 // Output the response
+ob_end_clean();
+header('Content-Type: application/json');
 echo json_encode($response);
 
 // Close database connection
 if (isset($conn)) {
     $conn->close();
 }
-
-ob_end_flush();
-?>
+exit();

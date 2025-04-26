@@ -3,8 +3,8 @@ $page_title = "Academic Management";
 include('includes/header.php');
 
 // Check if user is logged in
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
-    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['registrar', 'staff'])) {
+    redirect('../index.php', 'Please log in as a registrar or staff to perform this action.', 'warning');
     exit();
 }
 
@@ -184,7 +184,7 @@ if (!$stmt) {
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm edit-section-btn" data-bs-toggle="modal" data-bs-target="#editSectionModal" data-id="<?php echo $section['id']; ?>">Edit</button>
-                                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                                    <?php if ($_SESSION['role'] === 'registrar'): ?>
                                         <button type="button" class="btn btn-danger btn-sm delete-section-btn" data-bs-toggle="modal" data-bs-target="#deleteSectionModal" data-id="<?php echo $section['id']; ?>">Delete</button>
                                     <?php endif; ?>
                                 </td>
@@ -235,7 +235,7 @@ if (!$stmt) {
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm edit-course-btn" data-bs-toggle="modal" data-bs-target="#editCourseModal" data-id="<?php echo $course['id']; ?>">Edit</button>
-                                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                                    <?php if ($_SESSION['role'] === 'registrar'): ?>
                                         <button type="button" class="btn btn-danger btn-sm delete-course-btn" data-bs-toggle="modal" data-bs-target="#deleteCourseModal" data-id="<?php echo $course['id']; ?>">Delete</button>
                                     <?php endif; ?>
                                 </td>
@@ -287,7 +287,7 @@ if (!$stmt) {
                                 </td>
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm edit-school-year-btn" data-bs-toggle="modal" data-bs-target="#editSchoolYearModal" data-id="<?php echo $school_year['id']; ?>">Edit</button>
-                                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                                    <?php if ($_SESSION['role'] === 'registrar'): ?>
                                         <button type="button" class="btn btn-danger btn-sm delete-school-year-btn" data-bs-toggle="modal" data-bs-target="#deleteSchoolYearModal" data-id="<?php echo $school_year['id']; ?>">Delete</button>
                                     <?php endif; ?>
                                 </td>
@@ -422,7 +422,7 @@ if (!$stmt) {
     </div>
 </div>
 
-<?php if ($_SESSION['role'] === 'admin'): ?>
+<?php if ($_SESSION['role'] === 'registrar'): ?>
     <!-- Delete Section Modal -->
     <div class="modal fade" id="deleteSectionModal" tabindex="-1" aria-labelledby="deleteSectionModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -528,7 +528,7 @@ if (!$stmt) {
     </div>
 </div>
 
-<?php if ($_SESSION['role'] === 'admin'): ?>
+<?php if ($_SESSION['role'] === 'registrar'): ?>
     <!-- Delete Course Modal -->
     <div class="modal fade" id="deleteCourseModal" tabindex="-1" aria-labelledby="deleteCourseModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -583,6 +583,7 @@ if (!$stmt) {
                 <button type="submit" form="addSchoolYearForm" class="btn btn-primary">Add School Year</button>
             </div>
         </div>
+        </div>
     </div>
 </div>
 
@@ -620,7 +621,7 @@ if (!$stmt) {
     </div>
 </div>
 
-<?php if ($_SESSION['role'] === 'admin'): ?>
+<?php if ($_SESSION['role'] === 'registrar'): ?>
     <!-- Delete School Year Modal -->
     <div class="modal fade" id="deleteSchoolYearModal" tabindex="-1" aria-labelledby="deleteSchoolYearModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -678,7 +679,7 @@ if (!$stmt) {
         });
     });
 
-    <?php if ($_SESSION['role'] === 'admin'): ?>
+    <?php if ($_SESSION['role'] === 'registrar'): ?>
         // Populate Delete Section Modal
         document.querySelectorAll('.delete-section-btn').forEach(button => {
             button.addEventListener('click', function() {
@@ -718,7 +719,7 @@ if (!$stmt) {
         });
     });
 
-    <?php if ($_SESSION['role'] === 'admin'): ?>
+    <?php if ($_SESSION['role'] === 'registrar'): ?>
         // Populate Delete Course Modal
         document.querySelectorAll('.delete-course-btn').forEach(button => {
             button.addEventListener('click', function() {
@@ -756,7 +757,7 @@ if (!$stmt) {
         });
     });
 
-    <?php if ($_SESSION['role'] === 'admin'): ?>
+    <?php if ($_SESSION['role'] === 'registrar'): ?>
         // Populate Delete School Year Modal
         document.querySelectorAll('.delete-school-year-btn').forEach(button => {
             button.addEventListener('click', function() {

@@ -28,7 +28,7 @@ try {
     $stmt->close();
 
     // Fetch documents with pagination using prepared statement
-    $stmt = $conn->prepare("SELECT id, name, description, unit_price, form_needed, is_active, restrict_per_semester 
+    $stmt = $conn->prepare("SELECT id, name, description, unit_price, form_needed, is_active, restrict_per_semester, requirements 
                             FROM documents 
                             ORDER BY name ASC 
                             LIMIT ? OFFSET ?");
@@ -68,7 +68,7 @@ try {
             <div class="record-header">
                 <div class="add">
                     <span>All Documents (<?php echo $total_documents; ?> found)</span>
-                    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                    <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
                         <button type="button" class="btn btn-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#addModal">Add Document</button>
                     <?php endif; ?>
                 </div>
@@ -82,7 +82,7 @@ try {
                             <tr>
                                 <th>Document Name</th>
                                 <th>Price</th>
-                                <th>Form</th>
+                                <th>Attachment</th>
                                 <th>Status</th>
                                 <th>Semester Restriction</th>
                                 <th>Actions</th>
@@ -104,10 +104,10 @@ try {
                                         </td>
                                         <td><?php echo $doc['restrict_per_semester'] == 1 ? 'Restricted' : 'Not Restricted'; ?></td>
                                         <td>
-                                            <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                                            <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
                                                 <button type="button" class="btn btn-primary btn-sm edit-btn" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<?php echo $doc['id']; ?>">Edit</button>
                                             <?php endif; ?>
-                                            <?php if ($_SESSION['role'] === 'admin'): ?>
+                                            <?php if ($_SESSION['role'] === 'registrar'): ?>
                                                 <button type="button" class="btn btn-danger btn-sm delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="<?php echo $doc['id']; ?>">Delete</button>
                                             <?php endif; ?>
                                         </td>
@@ -139,8 +139,8 @@ try {
     </div>
 </main>
 
-<!-- Add Document Modal (only for admin and registrar) -->
-<?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+<!-- Add Document Modal (only for registrar and staff) -->
+<?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
 <div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -164,11 +164,15 @@ try {
                         <input type="number" class="form-control" id="addUnitPrice" name="unit_price" step="0.01" min="0" value="0.00" required>
                     </div>
                     <div class="mb-3">
-                        <label for="addForm" class="form-label">Form Required</label>
+                        <label for="addForm" class="form-label">Attachment Required</label>
                         <select class="form-select" id="addForm" name="form_needed" required>
                             <option value="1">Needed</option>
                             <option value="0">Not Needed</option>
                         </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="addRequirements" class="form-label">Requirements (e.g., Completely Signed Clearance Form)</label>
+                        <textarea class="form-control" id="addRequirements" name="requirements" rows="3" maxlength="1000" placeholder="Enter any specific requirements for this document..."></textarea>
                     </div>
                     <div class="mb-3">
                         <label for="addStatus" class="form-label">Status</label>
@@ -194,7 +198,7 @@ try {
     </div>
 </div>
 
-<!-- Edit Document Modal (only for admin and registrar) -->
+<!-- Edit Document Modal (only for registrar and staff) -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -226,6 +230,10 @@ try {
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label for="editRequirements" class="form-label">Requirements (e.g., Completely Signed Clearance Form)</label>
+                        <textarea class="form-control" id="editRequirements" name="requirements" rows="3" maxlength="1000" placeholder="Enter any specific requirements for this document..."></textarea>
+                    </div>
+                    <div class="mb-3">
                         <label for="editStatus" class="form-label">Status</label>
                         <select class="form-select" id="editStatus" name="is_active" required>
                             <option value="1">Active</option>
@@ -249,7 +257,7 @@ try {
     </div>
 </div>
 
-<?php if ($_SESSION['role'] === 'admin'): ?>
+<?php if ($_SESSION['role'] === 'registrar'): ?>
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -276,8 +284,8 @@ try {
 <?php endif; ?>
 
 <script>
-// Reset modals on close to prevent stale data (only for admin and registrar)
-<?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+// Reset modals on close to prevent stale data (only for registrar and staff)
+<?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
 document.getElementById('addModal').addEventListener('hidden.bs.modal', function () {
     document.getElementById('addDocumentForm').reset();
     document.getElementById('addUnitPrice').value = '0.00';
@@ -306,6 +314,7 @@ document.querySelectorAll('.edit-btn').forEach(button => {
                     document.getElementById('editDescription').value = doc.description || '';
                     document.getElementById('editUnitPrice').value = isNaN(parseFloat(doc.unit_price)) ? '0.00' : parseFloat(doc.unit_price).toFixed(2);
                     document.getElementById('editForm').value = doc.form_needed !== undefined ? doc.form_needed : '0';
+                    document.getElementById('editRequirements').value = doc.requirements || '';
                     document.getElementById('editStatus').value = doc.is_active !== undefined ? doc.is_active : '1';
                     document.getElementById('editRestrictPerSemester').value = doc.restrict_per_semester !== undefined ? doc.restrict_per_semester : '0';
                 } else {
@@ -320,7 +329,7 @@ document.querySelectorAll('.edit-btn').forEach(button => {
     });
 });
 
-<?php if ($_SESSION['role'] === 'admin'): ?>
+<?php if ($_SESSION['role'] === 'registrar'): ?>
 // Populate Delete Modal
 document.querySelectorAll('.delete-btn').forEach(button => {
     button.addEventListener('click', function () {

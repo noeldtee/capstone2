@@ -8,12 +8,12 @@
         <div class="side-menu">
             <ul class="container">
                 <li>
-                    <a href="dashboard.php" class="<?php echo (isset($page_title) && $page_title === 'Admin Dashboard') ? 'active' : ''; ?>">
+                    <a href="dashboard.php" class="<?php echo (isset($page_title) && $page_title === 'Registrar Dashboard') ? 'active' : ''; ?>">
                         <i class="fa-solid fa-house"></i>
                         <small>Dashboard</small>
                     </a>
                 </li>
-                <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
                     <li>
                         <a href="request.php" class="<?php echo (isset($page_title) && $page_title === 'Document Request Management') ? 'active' : ''; ?>">
                             <i class="fa-solid fa-file-signature"></i>
@@ -33,7 +33,7 @@
                         <small>Payment Logs</small>
                     </a>
                 </li>
-                <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
                     <!-- Settings with Bootstrap Dropdown -->
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Document Management', 'Academic Management', 'Users Management'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -56,7 +56,7 @@
                             <li>
                                 <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Users Management') ? 'active' : ''; ?>" href="students.php">
                                     <i class="fa-solid fa-users me-2"></i>
-                                    Users Management
+                                    Student Users Management
                                 </a>
                             </li>
                         </ul>
@@ -70,11 +70,11 @@
                         </a>
                     </li>
                 <?php endif; ?>
-                <?php if ($_SESSION['role'] === 'admin'): ?>
+                <?php if ($_SESSION['role'] === 'registrar'): ?>
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Action Logs', 'Settings', 'Admin Users'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa-solid fa-user-shield"></i>
-                            <small>Admin<br>Management</small>
+                            <small>Registrar<br>Management</small>
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="settingsDropdown">
                             <li>
@@ -90,7 +90,7 @@
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Admin Users') ? 'active' : ''; ?>" href="admin.php">
+                                <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Admin Users') ? 'active' : ''; ?>" href="registrar.php">
                                     <i class="fa-solid fa-user-shield"></i>
                                     Admin Users
                                 </a>

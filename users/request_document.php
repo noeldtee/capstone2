@@ -21,17 +21,18 @@ if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSI
 // PayMongo API keys
 $paymongo_secret_key = 'sk_test_qCKzU9gWR64WpE2ftVFHPVgs';
 
-// Helper function to determine the current semester
-function getCurrentSemester() {
-    $month = (int)date('m');
-    $year = date('Y');
-    if ($month >= 8 && $month <= 12) {
-        return ['semester' => 'First Semester', 'year' => $year];
-    } elseif ($month >= 1 && $month <= 5) {
-        return ['semester' => 'Second Semester', 'year' => $year];
-    } else {
-        return ['semester' => 'Summer Term', 'year' => $year];
-    }
+// Fetch the current semester from the settings table
+$stmt = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'current_semester'");
+$stmt->execute();
+$result = $stmt->get_result();
+$current_semester = $result->num_rows > 0 ? $result->fetch_assoc()['setting_value'] : '';
+$stmt->close();
+
+if (empty($current_semester)) {
+    $_SESSION['message'] = 'Current semester not set. Please contact an administrator.';
+    $_SESSION['message_type'] = 'danger';
+    header('Location: dashboard.php');
+    exit;
 }
 
 // Initialize variables for form feedback
@@ -58,11 +59,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
     } elseif (count($document_types) > 2) {
         $error_message = 'You can only request up to 2 documents at a time.';
     } else {
-        // Fetch current semester details
-        $current_semester = getCurrentSemester();
-        $semester_name = $current_semester['semester'];
-        $semester_year = $current_semester['year'];
-
         // Fetch user details for course_id, section_id, year_id
         $stmt = $conn->prepare("SELECT course_id, section_id, year_id FROM users WHERE id = ?");
         $stmt->bind_param("i", $user_id);
@@ -70,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
         $user_details = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        // Check semester restrictions and prepare documents
+        // Check semester restrictions, pending/processing requests, and prepare documents
         $stmt = $conn->prepare("SELECT name, unit_price, form_needed, restrict_per_semester FROM documents WHERE name = ? AND is_active = 1");
         $total_amount = 0;
         $documents_to_request = [];
@@ -91,20 +87,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
             $form_needed = $document['form_needed'] ?? 0;
             $restrict_per_semester = $document['restrict_per_semester'] ?? 0;
 
+            // Check for pending or processing requests
+            $stmt_check_pending = $conn->prepare("SELECT COUNT(*) as count FROM requests WHERE user_id = ? AND document_type = ? AND status IN ('Pending', 'Processing')");
+            $stmt_check_pending->bind_param("is", $user_id, $document_type);
+            $stmt_check_pending->execute();
+            $result_pending = $stmt_check_pending->get_result()->fetch_assoc();
+            $pending_count = $result_pending['count'];
+            $stmt_check_pending->close();
+
+            if ($pending_count > 0) {
+                $error_message = "You already have a pending or processing request for '$document_type'. Please wait until it is completed or rejected.";
+                $has_error = true;
+                break;
+            }
+
             // Check semester restrictions
             if ($restrict_per_semester) {
-                $semester_start = $semester_name === 'First Semester' ? "$semester_year-08-01" : ($semester_name === 'Second Semester' ? "$semester_year-01-01" : "$semester_year-06-01");
-                $semester_end = $semester_name === 'First Semester' ? "$semester_year-12-31" : ($semester_name === 'Second Semester' ? "$semester_year-05-31" : "$semester_year-07-31");
-
-                $stmt_check = $conn->prepare("SELECT COUNT(*) as count FROM requests WHERE user_id = ? AND document_type = ? AND requested_date BETWEEN ? AND ? AND status != 'Rejected'");
-                $stmt_check->bind_param("isss", $user_id, $document_type, $semester_start, $semester_end);
+                $stmt_check = $conn->prepare("SELECT COUNT(*) as count FROM requests WHERE user_id = ? AND document_type = ? AND semester = ? AND status != 'Rejected'");
+                $stmt_check->bind_param("iss", $user_id, $document_type, $current_semester);
                 $stmt_check->execute();
                 $result = $stmt_check->get_result()->fetch_assoc();
                 $request_count = $result['count'];
                 $stmt_check->close();
 
                 if ($request_count > 0) {
-                    $error_message = "You have already requested a '$document_type' this semester ($semester_name $semester_year).";
+                    $error_message = "You have already requested a '$document_type' this semester ($current_semester).";
                     $has_error = true;
                     break;
                 }
@@ -149,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                 // No payment required, directly insert requests
                 $request_ids = [];
                 $doc_names = array_column($documents_to_request, 'document_type');
-                $stmt = $conn->prepare("INSERT INTO requests (user_id, document_type, quantity, unit_price, amount, payment_status, status, remarks, file_path, course_id, section_id, year_id, requested_date, created_at) VALUES (?, ?, 1, ?, ?, 'paid', 'Pending', ?, ?, ?, ?, ?, NOW(), NOW())");
+                $stmt = $conn->prepare("INSERT INTO requests (user_id, document_type, quantity, unit_price, amount, payment_status, status, remarks, file_path, course_id, section_id, year_id, semester, requested_date, created_at) VALUES (?, ?, 1, ?, ?, 'paid', 'Pending', ?, ?, ?, ?, ?, ?, NOW(), NOW())");
                 
                 // Prepare statement for payments table
                 $stmt_payment = $conn->prepare("INSERT INTO payments (request_id, payment_method, amount, payment_status, description, payment_date, created_at) VALUES (?, 'N/A', ?, 'PAID', ?, NOW(), NOW())");
@@ -160,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                     $course_id = $doc['course_id'] ?? null;
                     $section_id = $doc['section_id'] ?? null;
                     $year_id = $doc['year_id'] ?? null;
-                    $stmt->bind_param("isdissiii", $user_id, $doc['document_type'], $unit_price, $amount, $remarks, $doc['file_path'], $course_id, $section_id, $year_id);
+                    $stmt->bind_param("isdissiiis", $user_id, $doc['document_type'], $unit_price, $amount, $remarks, $doc['file_path'], $course_id, $section_id, $year_id, $current_semester);
                     if ($stmt->execute()) {
                         $request_id = $conn->insert_id;
                         $request_ids[] = $request_id;
@@ -213,7 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
             
                     $student_name = $user['firstname'] . ' ' . $user['lastname'];
                     $admin_message = "Student $student_name submitted a request for $doc_names_list. Request ID(s): #" . implode(', #', $request_ids) . ".";
-                    $admin_link = "/capstone-admin/admin/request.php?id=" . $request_ids[0];
+                    $admin_link = "/admin/request.php?id=" . $request_ids[0];
             
                     foreach ($admins as $admin) {
                         $stmt = $conn->prepare("INSERT INTO admin_notifications (admin_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
@@ -253,8 +260,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
                             'description' => $description,
                             'line_items' => $line_items,
                             'payment_method_types' => ['gcash', 'card'],
-                            'success_url' => 'https://e5fc-120-29-78-198.ngrok-free.app/capstone-admin/users/request_success.php?request_ids=' . urlencode(json_encode($documents_to_request)),
-                            'cancel_url' => 'https://e5fc-120-29-78-198.ngrok-free.app/capstone-admin/users/request_document.php?error=cancelled',
+                            'success_url' => 'https://61a4-120-29-76-67.ngrok-free.app/capstone-admin/users/request_success.php?request_ids=' . urlencode(json_encode($documents_to_request)),
+                            'cancel_url' => 'https://61a4-120-29-76-67.ngrok-free.app/capstone-admin/users/request_document.php?error=cancelled',
                             'reference_number' => 'REQ_' . time(),
                             'send_email_receipt' => true,
                             'show_description' => true,
@@ -311,7 +318,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
 }
 
 // Fetch available documents for the form
-$stmt = $conn->prepare("SELECT * FROM documents WHERE is_active = 1");
+$stmt = $conn->prepare("SELECT name, unit_price, form_needed, restrict_per_semester, requirements FROM documents WHERE is_active = 1");
 $stmt->execute();
 $documents = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
@@ -346,7 +353,8 @@ include('includes/header.php');
                         <option value="<?= htmlspecialchars($doc['name']); ?>" 
                                 data-form-needed="<?= $doc['form_needed']; ?>" 
                                 data-price="<?= $doc['unit_price']; ?>" 
-                                data-restrict="<?= $doc['restrict_per_semester']; ?>">
+                                data-restrict="<?= $doc['restrict_per_semester']; ?>"
+                                data-requirements="<?= htmlspecialchars($doc['requirements'] ?? ''); ?>">
                             <?= htmlspecialchars($doc['name']); ?> (₱<?= htmlspecialchars($doc['unit_price']); ?>)
                         </option>
                     <?php endforeach; ?>
@@ -354,9 +362,14 @@ include('includes/header.php');
                 <small class="form-text text-muted">Hold Ctrl (Windows) or Command (Mac) to select multiple documents.</small>
             </div>
 
+            <div class="mb-3" id="requirements_display" style="display: none;">
+                <label class="form-label">Requirements for Selected Documents</label>
+                <ul id="requirements_list" class="list-group"></ul>
+            </div>
+
             <?php foreach ($documents as $doc): ?>
                 <div class="mb-3 form-upload" id="form_upload_<?= str_replace(' ', '_', $doc['name']); ?>" style="display: none;">
-                    <label for="form_file_<?= str_replace(' ', '_', $doc['name']); ?>" class="form-label">Upload Form for <?= htmlspecialchars($doc['name']); ?></label>
+                    <label for="form_file_<?= str_replace(' ', '_', $doc['name']); ?>" class="form-label">Upload Attachment for <?= htmlspecialchars($doc['name']); ?></label>
                     <input type="file" name="form_file_<?= str_replace(' ', '_', $doc['name']); ?>" 
                            id="form_file_<?= str_replace(' ', '_', $doc['name']); ?>" 
                            class="form-control" accept=".pdf,.doc,.docx">
@@ -402,28 +415,47 @@ include('includes/header.php');
     document.addEventListener('DOMContentLoaded', function() {
         const documentSelect = document.getElementById('document_types');
         const totalPriceInput = document.getElementById('total_price');
+        const requirementsDisplay = document.getElementById('requirements_display');
+        const requirementsList = document.getElementById('requirements_list');
 
         function updateForm() {
+            // Reset form uploads and requirements
             document.querySelectorAll('.form-upload').forEach(field => {
                 field.style.display = 'none';
                 const fileInput = field.querySelector('input[type="file"]');
                 fileInput.required = false;
             });
+            requirementsList.innerHTML = '';
+            requirementsDisplay.style.display = 'none';
 
             let totalPrice = 0;
             const selectedOptions = Array.from(documentSelect.selectedOptions);
-            selectedOptions.forEach(option => {
-                const formNeeded = option.getAttribute('data-form-needed') === '1';
-                const price = parseFloat(option.getAttribute('data-price'));
-                totalPrice += price;
-                if (formNeeded) {
-                    const docName = option.value.replace(/\s+/g, '_');
-                    const formUpload = document.getElementById(`form_upload_${docName}`);
-                    formUpload.style.display = 'block';
-                    const fileInput = document.getElementById(`form_file_${docName}`);
-                    fileInput.required = true;
-                }
-            });
+            if (selectedOptions.length > 0) {
+                selectedOptions.forEach(option => {
+                    const formNeeded = option.getAttribute('data-form-needed') === '1';
+                    const price = parseFloat(option.getAttribute('data-price'));
+                    const requirements = option.getAttribute('data-requirements');
+                    totalPrice += price;
+
+                    // Show form upload if needed
+                    if (formNeeded) {
+                        const docName = option.value.replace(/\s+/g, '_');
+                        const formUpload = document.getElementById(`form_upload_${docName}`);
+                        formUpload.style.display = 'block';
+                        const fileInput = document.getElementById(`form_file_${docName}`);
+                        fileInput.required = true;
+                    }
+
+                    // Show requirements if they exist
+                    if (requirements) {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item';
+                        li.innerHTML = `<strong>${option.value}:</strong> ${requirements}`;
+                        requirementsList.appendChild(li);
+                        requirementsDisplay.style.display = 'block';
+                    }
+                });
+            }
 
             totalPriceInput.value = `₱${totalPrice.toFixed(2)}`;
         }

@@ -99,7 +99,7 @@ if (isset($_POST['loginBtn'])) {
 
             // Redirect based on role
             $role = strtolower($row['role']);
-            if (in_array($role, ['admin', 'registrar', 'cashier'])) {
+            if (in_array($role, ['registrar', 'staff', 'cashier'])) {
                 redirect('admin/dashboard.php', 'Welcome to the Admin Dashboard', 'success');
             } elseif (in_array($role, ['student', 'alumni'])) {
                 redirect('users/dashboard.php', 'Welcome to the Student Dashboard', 'success');

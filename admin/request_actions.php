@@ -13,8 +13,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Check if user is logged in
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
-    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['registrar', 'staff'])) {
+    redirect('../index.php', 'Please log in as an staff or registrar to perform this action.', 'warning');
     exit();
 }
 
@@ -92,8 +92,8 @@ try {
             break;
 
         case 'delete':
-            if ($_SESSION['role'] !== 'admin') {
-                $response = ['status' => 'error', 'message' => 'Only admins can delete requests.'];
+            if ($_SESSION['role'] !== 'registrar') {
+                $response = ['status' => 'error', 'message' => 'Only registrars can delete requests.'];
                 break;
             }
             $id = (int)$_POST['id'];
@@ -125,8 +125,8 @@ try {
             break;
 
         case 'bulk_delete':
-            if ($_SESSION['role'] !== 'admin') {
-                $response = ['status' => 'error', 'message' => 'Only admins can delete requests.'];
+            if ($_SESSION['role'] !== 'registrar') {
+                $response = ['status' => 'error', 'message' => 'Only registrars can delete requests.'];
                 break;
             }
             $ids = array_filter(explode(',', $_POST['ids']), 'is_numeric');

@@ -119,12 +119,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
                             Mark as Completed
                         </button>
-                        <a href="request.php" class="btn btn-secondary">Back to Requests</a>
+                        <a href="admin/dashboard.php" class="btn btn-secondary">Back to Dashboard</a>
                     </form>
                 </div>
             </div>
         <?php else: ?>
-            <p>Scan a QR code to verify a request, or return to the <a href="request.php">requests page</a> for manual verification.</p>
+            <p>Scan a QR code to verify a request, or return to the <a href="admin/request.php">requests page</a> for manual verification.</p>
         <?php endif; ?>
     </div>
 

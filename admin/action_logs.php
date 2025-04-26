@@ -3,7 +3,7 @@
 $page_title = "Action Logs";
 require 'includes/header.php';
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'registrar') {
     redirect('dashboard.php', 'Access denied. You do not have permission to view this page.', 'danger');
     exit();
 }

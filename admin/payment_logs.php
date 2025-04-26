@@ -81,9 +81,9 @@ while ($row = $result->fetch_assoc()) {
     $paginated_payments[] = $row;
 }
 
-// Fetch archived payments for the modal (only for admin and registrar)
+// Fetch archived payments for the modal (only for registrar and staff)
 $archived_payments = [];
-if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
+if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff') {
     $archived_query = "SELECT p.id, p.request_id, p.payment_method, p.amount, p.payment_status, 
                               p.description, p.payment_date 
                        FROM payments p 
@@ -136,7 +136,7 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary btn-sm">Filter</button>
                     <a href="payment_logs.php" class="btn btn-secondary btn-sm">Clear</a>
-                    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                    <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
                         <button type="button" class="btn btn-primary btn-sm" style="margin-top: 3px;" data-bs-toggle="modal" data-bs-target="#archiveModal">View Archives</button>
                     <?php endif; ?>
                 </div>
@@ -151,10 +151,10 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
             <div class="record-header">
                 <div class="add">
                     <span>All Payment Transactions (<?php echo $total_payments; ?> found)</span>
-                    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                    <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
                         <button type="button" class="btn btn-warning btn-sm float-end" onclick="bulkArchive()">Archive Selected</button>
                     <?php endif; ?>
-                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                    <?php if ($_SESSION['role'] === 'registrar'): ?>
                         <button type="button" class="btn btn-danger btn-sm float-end me-2" onclick="bulkDelete()">Delete Selected</button>
                     <?php endif; ?>
                 </div>
@@ -163,7 +163,7 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
                 <table class="table table-striped table-hover" width="100%">
                     <thead>
                         <tr>
-                            <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                            <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
                                 <th><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th>
                             <?php endif; ?>
                             <th>Payment Method</th>
@@ -177,12 +177,12 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
                     <tbody>
                         <?php if (empty($paginated_payments)): ?>
                             <tr>
-                                <td colspan="<?php echo ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') ? '7' : '6'; ?>" class="text-center">No payments found.</td>
+                                <td colspan="<?php echo ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff') ? '7' : '6'; ?>" class="text-center">No payments found.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($paginated_payments as $payment): ?>
                                 <tr>
-                                    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+                                    <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
                                         <td>
                                             <input type="checkbox" name="selected_payments[]" value="<?php echo $payment['id']; ?>" class="payment-checkbox">
                                         </td>
@@ -284,8 +284,8 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
     </div>
 </div>
 
-<!-- Archive Modal (only for admin and registrar) -->
-<?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+<!-- Archive Modal (only for registrar and staff) -->
+<?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
 <div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -337,7 +337,7 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
                                     <td>
                                         <a href="#" class="btn btn-success btn-sm view-btn" data-bs-toggle="modal" data-bs-target="#viewModal" data-id="<?php echo $payment['id']; ?>">View details</a>
                                         <button type="button" class="btn btn-success btn-sm retrieve-btn" data-id="<?php echo $payment['id']; ?>">Retrieve</button>
-                                        <?php if ($_SESSION['role'] === 'admin'): ?>
+                                        <?php if ($_SESSION['role'] === 'registrar'): ?>
                                             <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $payment['id']; ?>">Delete</button>
                                         <?php endif; ?>
                                     </td>
@@ -356,7 +356,7 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
 <?php endif; ?>
 
 <script>
-    // Toggle all checkboxes (only for admin and registrar)
+    // Toggle all checkboxes (only for registrar and staff)
     function toggleSelectAll() {
         const selectAll = document.getElementById('select-all');
         const checkboxes = document.querySelectorAll('.payment-checkbox');
@@ -385,8 +385,8 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
         if (processingDiv) processingDiv.remove();
     }
 
-    // Bulk archive selected payments (only for admin and registrar)
-    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+    // Bulk archive selected payments (only for registrar and staff)
+    <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
     function bulkArchive() {
         const selected = Array.from(document.querySelectorAll('.payment-checkbox:checked'))
             .map(checkbox => checkbox.value);
@@ -420,7 +420,7 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
     }
     <?php endif; ?>
 
-    <?php if ($_SESSION['role'] === 'admin'): ?>
+    <?php if ($_SESSION['role'] === 'registrar'): ?>
         // Bulk delete selected payments
         function bulkDelete() {
             const selected = Array.from(document.querySelectorAll('.payment-checkbox:checked'))
@@ -485,7 +485,7 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
         });
     });
 
-    <?php if ($_SESSION['role'] === 'admin'): ?>
+    <?php if ($_SESSION['role'] === 'registrar'): ?>
         // Individual delete function
         document.querySelectorAll('.delete-btn').forEach(button => {
             button.addEventListener('click', function() {
@@ -517,8 +517,8 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
         });
     <?php endif; ?>
 
-    // Retrieve (unarchive) a payment (only for admin and registrar)
-    <?php if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar'): ?>
+    // Retrieve (unarchive) a payment (only for registrar and staff)
+    <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
     document.querySelectorAll('.retrieve-btn').forEach(button => {
         button.addEventListener('click', function() {
             const paymentId = this.dataset.id;
@@ -544,8 +544,8 @@ if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'registrar') {
                         hideProcessingMessage();
                         alert('Failed to retrieve payment: ' + error.message);
                     });
-            }
-        });
+                }
+            });
     });
     <?php endif; ?>
 

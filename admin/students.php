@@ -211,7 +211,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                                     <td><span class="badge <?php echo $user['is_ban'] == 0 ? 'bg-success' : 'bg-danger'; ?>"><?php echo $user['is_ban'] == 0 ? 'Active' : 'Inactive'; ?></span></td>
                                     <td><span class="badge <?php echo $user['verify_status'] == 1 ? 'bg-success' : 'bg-warning'; ?>"><?php echo $user['verify_status'] == 1 ? 'Verified' : 'Not Verified'; ?></span></td>
                                     <td>
-                                        <?php if ($_SESSION['role'] === 'admin'): ?>
+                                        <?php if ($_SESSION['role'] === 'registrar'): ?>
                                             <button type="button" class="btn btn-primary btn-sm edit-user-btn" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<?php echo $user['id']; ?>">Edit</button>
                                             <button type="button" class="btn btn-danger btn-sm delete-user-btn" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="<?php echo $user['id']; ?>">Delete</button>
                                         <?php else: ?>
@@ -338,7 +338,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
     </div>
 </div>
 
-<!-- View User Modal (for Registrar) -->
+<!-- View User Modal (for Staff) -->
 <div class="modal fade" id="viewModal" tabindex="-1" aria-labelledby="viewModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -409,8 +409,8 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
     </div>
 </div>
 
-<!-- Edit User Modal (for Admin only) -->
-<?php if ($_SESSION['role'] === 'admin'): ?>
+<!-- Edit User Modal (for Registrar only) -->
+<?php if ($_SESSION['role'] === 'registrar'): ?>
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -516,7 +516,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
     </div>
 </div>
 
-<!-- Delete Confirmation Modal (for Admin only) -->
+<!-- Delete Confirmation Modal (for Registrar only) -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -638,7 +638,7 @@ function fetchSections(selectElement, courseId, schoolYearId, selectedSectionId)
         });
 }
 
-// Populate View User Modal (for Registrar)
+// Populate View User Modal (for Staff)
 document.querySelectorAll('.view-user-btn').forEach(button => {
     button.addEventListener('click', function () {
         const modal = document.getElementById('viewModal');
@@ -710,7 +710,7 @@ document.querySelectorAll('.view-user-btn').forEach(button => {
     });
 });
 
-<?php if ($_SESSION['role'] === 'admin'): ?>
+<?php if ($_SESSION['role'] === 'registrar'): ?>
 // Edit User Modal Logic
 document.getElementById('editCourse').addEventListener('change', function () {
     const yearLevelGroup = document.getElementById('editYearLevelGroup');

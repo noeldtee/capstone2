@@ -7,8 +7,8 @@ ini_set('error_log', 'C:/xampp/htdocs/capstone-admin/error.log');
 
 require '../config/function.php';
 
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
-    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['registrar', 'staff'])) {
+    redirect('../index.php', 'Please log in as a registrar or staff to perform this action.', 'warning');
     exit();
 }
 
@@ -26,7 +26,12 @@ switch ($action) {
         $school_year_id = (int)validate($_POST['school_year_id']);
         $course_id = (int)validate($_POST['course_id']);
         $year_level = validate($_POST['year_level']);
-        $section = validate($_POST['section']);
+        $section = strtoupper(trim(validate($_POST['section'])));
+
+        // Validate section is a single uppercase letter (A-Z)
+        if (!preg_match('/^[A-Z]$/', $section)) {
+            redirect('sections.php', 'Section must be a single uppercase letter (A-Z).', 'danger');
+        }
 
         // Validate foreign keys and fetch school year status
         $stmt = $conn->prepare("SELECT id, status FROM school_years WHERE id = ?");
@@ -37,7 +42,7 @@ switch ($action) {
             redirect('sections.php', 'Invalid school year selected.', 'danger');
         }
         $school_year = $result->fetch_assoc();
-        $status = $school_year['status']; // Now correctly fetched
+        $status = $school_year['status'];
         $stmt->close();
 
         $stmt = $conn->prepare("SELECT id FROM courses WHERE id = ?");
@@ -53,6 +58,7 @@ switch ($action) {
             redirect('sections.php', 'Invalid year level.', 'danger');
         }
 
+        // Check for duplicate section
         $stmt = $conn->prepare("SELECT id FROM sections WHERE school_year_id = ? AND course_id = ? AND year_level = ? AND section = ?");
         $stmt->bind_param("iiss", $school_year_id, $course_id, $year_level, $section);
         $stmt->execute();
@@ -60,6 +66,19 @@ switch ($action) {
             redirect('sections.php', 'This section already exists.', 'danger');
         }
         $stmt->close();
+
+        // Validate alphabetical sequence (e.g., Section B requires Section A)
+        if ($section !== 'A') {
+            $prev_section = chr(ord($section) - 1); // Get previous letter (e.g., C -> B)
+            $stmt = $conn->prepare("SELECT id FROM sections WHERE school_year_id = ? AND course_id = ? AND year_level = ? AND section = ?");
+            $stmt->bind_param("iiss", $school_year_id, $course_id, $year_level, $prev_section);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($result->num_rows == 0) {
+                redirect('sections.php', "Cannot create Section $section. Section $prev_section must exist first.", 'danger');
+            }
+            $stmt->close();
+        }
 
         $stmt = $conn->prepare("INSERT INTO sections (school_year_id, course_id, year_level, section, status, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
         $stmt->bind_param("iisss", $school_year_id, $course_id, $year_level, $section, $status);
@@ -84,8 +103,13 @@ switch ($action) {
         $school_year_id = (int)validate($_POST['school_year_id']);
         $course_id = (int)validate($_POST['course_id']);
         $year_level = validate($_POST['year_level']);
-        $section = validate($_POST['section']);
+        $section = strtoupper(trim(validate($_POST['section'])));
         $status = validate($_POST['status']);
+
+        // Validate section is a single uppercase letter (A-Z)
+        if (!preg_match('/^[A-Z]$/', $section)) {
+            redirect('sections.php', 'Section must be a single uppercase letter (A-Z).', 'danger');
+        }
 
         if (!in_array($status, ['Current', 'Past', 'Inactive'])) {
             redirect('sections.php', 'Invalid status.', 'danger');

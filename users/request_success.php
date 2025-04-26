@@ -16,6 +16,20 @@ if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSI
 // PayMongo API key
 $paymongo_secret_key = 'sk_test_qCKzU9gWR64WpE2ftVFHPVgs';
 
+// Fetch the current semester from the settings table
+$stmt = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'current_semester'");
+$stmt->execute();
+$result = $stmt->get_result();
+$current_semester = $result->num_rows > 0 ? $result->fetch_assoc()['setting_value'] : '';
+$stmt->close();
+
+if (empty($current_semester)) {
+    $_SESSION['message'] = 'Current semester not set. Please contact an administrator.';
+    $_SESSION['message_type'] = 'danger';
+    header('Location: request_document.php');
+    exit;
+}
+
 // Get user ID
 $user_id = $_SESSION['user_id'];
 
@@ -73,7 +87,7 @@ if (!$payment_successful) {
 // Insert requests into the database since payment is successful
 $request_ids = [];
 $doc_names = array_column($documents_to_request, 'document_type');
-$stmt = $conn->prepare("INSERT INTO requests (user_id, document_type, quantity, unit_price, amount, payment_status, status, remarks, file_path, course_id, section_id, year_id, requested_date, created_at) VALUES (?, ?, 1, ?, ?, 'paid', 'Pending', ?, ?, ?, ?, ?, NOW(), NOW())");
+$stmt = $conn->prepare("INSERT INTO requests (user_id, document_type, quantity, unit_price, amount, payment_status, status, remarks, file_path, course_id, section_id, year_id, semester, requested_date, created_at) VALUES (?, ?, 1, ?, ?, 'paid', 'Pending', ?, ?, ?, ?, ?, ?, NOW(), NOW())");
 
 // Prepare statement for payments table
 $stmt_payment = $conn->prepare("INSERT INTO payments (request_id, payment_method, amount, payment_status, description, payment_date, created_at) VALUES (?, ?, ?, 'PAID', ?, NOW(), NOW())");
@@ -85,7 +99,7 @@ foreach ($documents_to_request as $doc) {
     $course_id = $doc['course_id'] ?? null;
     $section_id = $doc['section_id'] ?? null;
     $year_id = $doc['year_id'] ?? null;
-    $stmt->bind_param("isdissiii", $user_id, $doc['document_type'], $unit_price, $amount, $remarks, $file_path, $course_id, $section_id, $year_id);
+    $stmt->bind_param("isdissiiis", $user_id, $doc['document_type'], $unit_price, $amount, $remarks, $file_path, $course_id, $section_id, $year_id, $current_semester);
     if ($stmt->execute()) {
         $request_id = $conn->insert_id;
         $request_ids[] = $request_id;
@@ -139,7 +153,7 @@ $stmt->close();
 
 $student_name = $user['firstname'] . ' ' . $user['lastname'];
 $admin_message = "Student $student_name submitted payment for " . implode(' and ', $doc_names) . ".";
-$admin_link = "/capstone-admin/admin/request.php?id=" . $request_ids[0];
+$admin_link = "/admin/request.php?id=" . $request_ids[0];
 
 foreach ($admins as $admin) {
     $stmt = $conn->prepare("INSERT INTO admin_notifications (admin_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");

@@ -1,27 +1,29 @@
 <?php
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
 require $_SERVER['DOCUMENT_ROOT'] . '/capstone-admin/vendor/autoload.php';
 
-function sendApprovalNotification($student_email, $firstname, $lastname, $document_type, $request_id) {
+function sendApprovalNotification($student_email, $firstname, $lastname, $document_type, $request_id)
+{
     $mail = new PHPMailer(true);
     try {
         $mail->SMTPDebug = 0;
-        $mail->Debugoutput = function($str, $level) {
+        $mail->Debugoutput = function ($str, $level) {
             error_log("PHPMailer Debug [$level]: $str");
         };
 
         $mail->isSMTP();
         $mail->SMTPAuth = true;
         $mail->Host = 'smtp.gmail.com';
-        $mail->Username = 'bpcregistrar75@gmail.com';
-        $mail->Password = 'nkei hmzy qpwn wzch';
+        $mail->Username = 'bpcregistrar68@gmail.com';
+        $mail->Password = 'vgcw ukef maor oubh';
         $mail->SMTPSecure = "tls";
         $mail->Port = 587;
 
-        $mail->setFrom('bpcregistrar75@gmail.com', 'BPC Registrar');
+        $mail->setFrom('bpcregistrar68@gmail.com', 'BPC Registrar');
         $mail->addAddress($student_email);
         $mail->isHTML(true);
         $mail->Subject = 'Document Request Approved - Bulacan Polytechnic College Registrar';
@@ -39,7 +41,7 @@ function sendApprovalNotification($student_email, $firstname, $lastname, $docume
                 <!-- Header -->
                 <tr>
                     <td style="padding: 20px; text-align: center; background-color: #2e7d32; border-top-left-radius: 10px; border-top-right-radius: 10px;">
-                        <img src="https://9b67-120-29-78-198.ngrok-free.app/capstone-admin/assets/images/logo.png" alt="BPC Logo" width="80" height="76" style="display: block; margin: 0 auto;">
+                        <img src="https://bpcsdrs.com/assets/images/logo.png" alt="BPC Logo" width="80" height="76" style="display: block; margin: 0 auto;">
                         <h2 style="color: #ffffff; margin: 10px 0 0; font-size: 24px;">Bulacan Polytechnic College Registrar</h2>
                     </td>
                 </tr>
@@ -82,23 +84,24 @@ function sendApprovalNotification($student_email, $firstname, $lastname, $docume
     }
 }
 
-function sendPickupNotification($student_email, $firstname, $lastname, $document_type, $request_id, $qr_file = null) {
+function sendPickupNotification($student_email, $firstname, $lastname, $document_type, $request_id, $qr_file = null)
+{
     $mail = new PHPMailer(true);
     try {
         $mail->SMTPDebug = 0;
-        $mail->Debugoutput = function($str, $level) {
+        $mail->Debugoutput = function ($str, $level) {
             error_log("PHPMailer Debug [$level]: $str");
         };
 
         $mail->isSMTP();
         $mail->SMTPAuth = true;
         $mail->Host = 'smtp.gmail.com';
-        $mail->Username = 'bpcregistrar75@gmail.com';
-        $mail->Password = 'nkei hmzy qpwn wzch';
+        $mail->Username = 'bpcregistrar68@gmail.com';
+        $mail->Password = 'vgcw ukef maor oubh';
         $mail->SMTPSecure = "tls";
         $mail->Port = 587;
 
-        $mail->setFrom('bpcregistrar75@gmail.com', 'BPC Registrar');
+        $mail->setFrom('bpcregistrar68@gmail.com', 'BPC Registrar');
         $mail->addAddress($student_email);
         $mail->isHTML(true);
         $mail->Subject = 'Document Ready for Pickup - Bulacan Polytechnic College Registrar';
@@ -125,7 +128,7 @@ function sendPickupNotification($student_email, $firstname, $lastname, $document
                 <!-- Header -->
                 <tr>
                     <td style="padding: 20px; text-align: center; background-color: #2e7d32; border-top-left-radius: 10px; border-top-right-radius: 10px;">
-                        <img src="https://9b67-120-29-78-198.ngrok-free.app/capstone-admin/assets/images/logo.png" alt="BPC Logo" width="80" height="76" style="display: block; margin: 0 auto;">
+                        <img src="https://bpcsdrs.com/assets/images/logo.png" alt="BPC Logo" width="80" height="76" style="display: block; margin: 0 auto;">
                         <h2 style="color: #ffffff; margin: 10px 0 0; font-size: 24px;">Bulacan Polytechnic College Registrar</h2>
                     </td>
                 </tr>
@@ -169,23 +172,24 @@ function sendPickupNotification($student_email, $firstname, $lastname, $document
     }
 }
 
-function sendRejectionNotification($student_email, $firstname, $lastname, $document_type, $request_id, $rejection_reason) {
+function sendRejectionNotification($student_email, $firstname, $lastname, $document_type, $request_id, $rejection_reason)
+{
     $mail = new PHPMailer(true);
     try {
         $mail->SMTPDebug = 0;
-        $mail->Debugoutput = function($str, $level) {
+        $mail->Debugoutput = function ($str, $level) {
             error_log("PHPMailer Debug [$level]: $str");
         };
 
         $mail->isSMTP();
         $mail->SMTPAuth = true;
         $mail->Host = 'smtp.gmail.com';
-        $mail->Username = 'bpcregistrar75@gmail.com';
-        $mail->Password = 'nkei hmzy qpwn wzch';
+        $mail->Username = 'bpcregistrar68@gmail.com';
+        $mail->Password = 'vgcw ukef maor oubh';
         $mail->SMTPSecure = "tls";
         $mail->Port = 587;
 
-        $mail->setFrom('bpcregistrar75@gmail.com', 'BPC Registrar');
+        $mail->setFrom('bpcregistrar68@gmail.com', 'BPC Registrar');
         $mail->addAddress($student_email);
         $mail->isHTML(true);
         $mail->Subject = 'Document Request Rejected - Bulacan Polytechnic College Registrar';
@@ -203,7 +207,7 @@ function sendRejectionNotification($student_email, $firstname, $lastname, $docum
                 <!-- Header -->
                 <tr>
                     <td style="padding: 20px; text-align: center; background-color: #2e7d32; border-top-left-radius: 10px; border-top-right-radius: 10px;">
-                        <img src="https://9b67-120-29-78-198.ngrok-free.app/capstone-admin/assets/images/logo.png" alt="BPC Logo" width="80" height="76" style="display: block; margin: 0 auto;">
+                        <img src="https://bpcsdrs.com/assets/images/logo.png" alt="BPC Logo" width="80" height="76" style="display: block; margin: 0 auto;">
                         <h2 style="color: #ffffff; margin: 10px 0 0; font-size: 24px;">Bulacan Polytechnic College Registrar</h2>
                     </td>
                 </tr>
@@ -248,4 +252,3 @@ function sendRejectionNotification($student_email, $firstname, $lastname, $docum
         return ['success' => false, 'error' => $mail->ErrorInfo];
     }
 }
-?>

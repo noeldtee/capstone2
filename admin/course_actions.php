@@ -7,8 +7,8 @@ ini_set('error_log', 'C:/xampp/htdocs/capstone-admin/error.log');
 
 require '../config/function.php';
 
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar'])) {
-    redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['registrar', 'staff'])) {
+    redirect('../index.php', 'Please log in as an registrar or staff to perform this action.', 'warning');
     exit();
 }
 
