@@ -1,5 +1,5 @@
 <?php
-$page_title = "Settings - Terms and Conditions";
+$page_title = "Settings";
 include('includes/header.php');
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
@@ -8,10 +8,9 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 }
 
 // Handle form submission to update Terms and Conditions
-$terms = ''; // Initialize $terms
+$terms = '';
 if (isset($_POST['update_terms'])) {
     $terms_content = validate($_POST['terms_content']);
-
     if (empty($terms_content)) {
         $_SESSION['message'] = 'Terms and Conditions content cannot be empty.';
         $_SESSION['message_type'] = 'danger';
@@ -23,7 +22,6 @@ if (isset($_POST['update_terms'])) {
             logAction($conn, 'Terms Updated', 'Terms and Conditions', 'Updated Terms and Conditions content');
             $_SESSION['message'] = 'Terms and Conditions updated successfully.';
             $_SESSION['message_type'] = 'success';
-            // Re-fetch the updated content after a successful update
             $stmt->close();
             $stmt = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'terms_and_conditions'");
             $stmt->execute();
@@ -38,12 +36,46 @@ if (isset($_POST['update_terms'])) {
     }
 }
 
-// Fetch the current Terms and Conditions if not already fetched (e.g., on initial page load or after a failed update)
+// Handle form submission to update Current Semester
+$current_semester = '';
+if (isset($_POST['update_semester'])) {
+    $semester = validate($_POST['current_semester']);
+    if (empty($semester)) {
+        $_SESSION['message'] = 'Semester cannot be empty.';
+        $_SESSION['message_type'] = 'danger';
+    } else {
+        $stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('current_semester', ?) 
+                                ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()");
+        $stmt->bind_param("ss", $semester, $semester);
+        if ($stmt->execute()) {
+            logAction($conn, 'Semester Updated', 'Current Semester', 'Updated semester to: ' . $semester);
+            $_SESSION['message'] = 'Current semester updated successfully.';
+            $_SESSION['message_type'] = 'success';
+            $current_semester = $semester;
+            $stmt->close();
+        } else {
+            $_SESSION['message'] = 'Failed to update semester: ' . $stmt->error;
+            $_SESSION['message_type'] = 'danger';
+            $stmt->close();
+        }
+    }
+}
+
+// Fetch the current Terms and Conditions if not already fetched
 if (empty($terms)) {
     $stmt = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'terms_and_conditions'");
     $stmt->execute();
     $result = $stmt->get_result();
     $terms = $result->num_rows > 0 ? $result->fetch_assoc()['setting_value'] : '';
+    $stmt->close();
+}
+
+// Fetch the current semester if not already fetched
+if (empty($current_semester)) {
+    $stmt = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'current_semester'");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $current_semester = $result->num_rows > 0 ? $result->fetch_assoc()['setting_value'] : '';
     $stmt->close();
 }
 
@@ -73,10 +105,11 @@ $conn->close();
 
 <main>
     <div class="page-header">
-        <span>Settings - Terms and Conditions</span><br>
-        <small>Manage the Terms and Conditions displayed during user registration.</small>
+        <span>Settings</span><br>
+        <small>Manage system settings.</small>
     </div>
     <div class="page-content">
+        <!-- Terms and Conditions Section -->
         <div class="records table-responsive">
             <div class="record-header">
                 <div class="add">
@@ -90,6 +123,25 @@ $conn->close();
                         <textarea name="terms_content" id="terms_content" class="form-control"><?php echo htmlspecialchars($terms); ?></textarea>
                     </div>
                     <button type="submit" name="update_terms" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Current Semester Section -->
+        <div class="records table-responsive mt-4">
+            <div class="record-header">
+                <div class="add">
+                    <span>Update Current Semester</span>
+                </div>
+            </div>
+            <div>
+                <form action="settings.php" method="POST">
+                    <div class="mb-3">
+                        <label for="current_semester" class="form-label">Current Semester</label>
+                        <input type="text" class="form-control" id="current_semester" name="current_semester" value="<?php echo htmlspecialchars($current_semester); ?>" placeholder="e.g., 1st Semester 2024-2025" required>
+                        <small class="form-text text-muted">Enter the current semester (e.g., "1st Semester 2024-2025"). Changing this will allow students to request restricted documents again.</small>
+                    </div>
+                    <button type="submit" name="update_semester" class="btn btn-primary">Update Semester</button>
                 </form>
             </div>
         </div>

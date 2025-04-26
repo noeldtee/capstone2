@@ -10,11 +10,6 @@ require '../config/send_email.php';
 // Include QR code library
 require '../libs/phpqrcode/qrlib.php';
 
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 // Check if user is logged in
 if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar', 'cashier'])) {
     redirect('../index.php', 'Please log in as an admin or registrar to perform this action.', 'warning');
@@ -224,7 +219,7 @@ try {
                         mkdir($qr_dir, 0777, true);
                     }
                     $qr_file = $qr_dir . "request_$id.png";
-                    $qr_url = "http://yourdomain.com/capstone-admin/verify_qr.php?token=$pickup_token"; // Update with your domain
+                    $qr_url = "https://bpcsdrs.com/verify_qr.php?token=$pickup_token"; // Update with your domain
                     QRcode::png($qr_url, $qr_file, QR_ECLEVEL_L, 10);
 
                     logAction($conn, 'Mark Ready', "Request ID: $id", "Status changed to Ready to Pickup");
@@ -424,7 +419,7 @@ try {
                         mkdir($qr_dir, 0777, true);
                     }
                     $qr_file = $qr_dir . "request_$request_id.png";
-                    $qr_url = "http://yourdomain.com/capstone-admin/verify_qr.php?token=$pickup_token"; // Update with your domain
+                    $qr_url = "https://bpcsdrs.com/verify_qr.php?token=$pickup_token"; // Update with your domain
                     QRcode::png($qr_url, $qr_file, QR_ECLEVEL_L, 10);
 
                     logAction($conn, 'Bulk Mark Ready', "Request ID: $request_id", "Status changed to Ready to Pickup");

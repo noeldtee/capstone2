@@ -72,7 +72,7 @@
                 <?php endif; ?>
                 <?php if ($_SESSION['role'] === 'admin'): ?>
                     <li class="dropdown">
-                        <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Action Logs', 'Settings - Terms and Conditions', 'Admin Users'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Action Logs', 'Settings', 'Admin Users'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa-solid fa-user-shield"></i>
                             <small>Admin<br>Management</small>
                         </a>
@@ -84,9 +84,9 @@
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Settings - Terms and Conditions') ? 'active' : ''; ?>" href="settings.php">
+                                <a class="dropdown-item <?php echo (isset($page_title) && $page_title === 'Settings') ? 'active' : ''; ?>" href="settings.php">
                                     <i class="fa-solid fa-file-contract"></i>
-                                    Terms and Conditions
+                                    Terms and Semester
                                 </a>
                             </li>
                             <li>

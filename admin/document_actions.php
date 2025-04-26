@@ -3,23 +3,14 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Start output buffering
-ob_start();
-
 // Include necessary files
 require '../config/function.php';
 
-// Set JSON content type
-header('Content-Type: application/json');
-
-// Initialize response
-$response = ['status' => 'error', 'message' => 'Invalid action.'];
-
 // Check if user is logged in and authorized
 if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !in_array($_SESSION['role'], ['admin', 'registrar', 'cashier'])) {
-    $response = ['status' => 'error', 'message' => 'Unauthorized access.'];
-    echo json_encode($response);
-    ob_end_flush();
+    $_SESSION['message'] = 'Unauthorized access.';
+    $_SESSION['message_type'] = 'error';
+    header('Location: documents.php');
     exit;
 }
 
@@ -34,13 +25,15 @@ try {
             $description = validate($_POST['description'] ?? '');
             $unit_price = isset($_POST['unit_price']) ? validate($_POST['unit_price']) : null;
             $form_needed = isset($_POST['form_needed']) ? (int)validate($_POST['form_needed']) : 0;
-            $is_active = isset($_POST['form_needed']) ? (int)validate($_POST['is_active']) : 1;
+            $is_active = isset($_POST['is_active']) ? (int)validate($_POST['is_active']) : 1;
             $restrict_per_semester = isset($_POST['restrict_per_semester']) ? (int)validate($_POST['restrict_per_semester']) : 0;
 
             // Validate unit_price
             if (!is_numeric($unit_price) || $unit_price < 0) {
-                $response = ['status' => 'error', 'message' => 'Price must be a non-negative number.'];
-                break;
+                $_SESSION['message'] = 'Price must be a non-negative number.';
+                $_SESSION['message_type'] = 'error';
+                header('Location: documents.php');
+                exit;
             }
             $unit_price = (float)$unit_price;
 
@@ -49,9 +42,11 @@ try {
             $stmt->bind_param("s", $name);
             $stmt->execute();
             if ($stmt->get_result()->num_rows > 0) {
-                $response = ['status' => 'error', 'message' => 'Document name already exists.'];
+                $_SESSION['message'] = 'Document name already exists.';
+                $_SESSION['message_type'] = 'error';
                 $stmt->close();
-                break;
+                header('Location: documents.php');
+                exit;
             }
             $stmt->close();
 
@@ -62,12 +57,14 @@ try {
             if ($stmt->execute()) {
                 $document_id = $stmt->insert_id;
                 logAction($conn, "Document Added", "Document ID: $document_id", "Name: $name, Price: ₱$unit_price, Form Needed: " . ($form_needed ? 'Yes' : 'No') . ", Status: " . ($is_active ? 'Active' : 'Inactive') . ", Semester Restriction: " . ($restrict_per_semester ? 'Restricted' : 'Not Restricted'));
-                $response = ['status' => 'success', 'message' => 'Document added successfully.'];
+                $_SESSION['message'] = 'Document added successfully.';
+                $_SESSION['message_type'] = 'success';
             } else {
                 throw new Exception("Failed to add document: " . $stmt->error);
             }
             $stmt->close();
-            break;
+            header('Location: documents.php');
+            exit;
 
         case 'edit':
             // Validate inputs
@@ -81,12 +78,16 @@ try {
 
             // Validate unit_price and ID
             if ($id <= 0) {
-                $response = ['status' => 'error', 'message' => 'Invalid document ID.'];
-                break;
+                $_SESSION['message'] = 'Invalid document ID.';
+                $_SESSION['message_type'] = 'error';
+                header('Location: documents.php');
+                exit;
             }
             if (!is_numeric($unit_price) || $unit_price < 0) {
-                $response = ['status' => 'error', 'message' => 'Price must be a non-negative number.'];
-                break;
+                $_SESSION['message'] = 'Price must be a non-negative number.';
+                $_SESSION['message_type'] = 'error';
+                header('Location: documents.php');
+                exit;
             }
             $unit_price = (float)$unit_price;
 
@@ -95,9 +96,11 @@ try {
             $stmt->bind_param("si", $name, $id);
             $stmt->execute();
             if ($stmt->get_result()->num_rows > 0) {
-                $response = ['status' => 'error', 'message' => 'Document name already exists.'];
+                $_SESSION['message'] = 'Document name already exists.';
+                $_SESSION['message_type'] = 'error';
                 $stmt->close();
-                break;
+                header('Location: documents.php');
+                exit;
             }
             $stmt->close();
 
@@ -108,25 +111,32 @@ try {
             if ($stmt->execute()) {
                 if ($stmt->affected_rows > 0) {
                     logAction($conn, "Document Edited", "Document ID: $id", "Name: $name, Price: ₱$unit_price, Form Needed: " . ($form_needed ? 'Yes' : 'No') . ", Status: " . ($is_active ? 'Active' : 'Inactive') . ", Semester Restriction: " . ($restrict_per_semester ? 'Restricted' : 'Not Restricted'));
-                    $response = ['status' => 'success', 'message' => 'Document updated successfully.'];
+                    $_SESSION['message'] = 'Document updated successfully.';
+                    $_SESSION['message_type'] = 'success';
                 } else {
-                    $response = ['status' => 'error', 'message' => 'No changes made or document not found.'];
+                    $_SESSION['message'] = 'No changes made or document not found.';
+                    $_SESSION['message_type'] = 'error';
                 }
             } else {
                 throw new Exception("Failed to update document: " . $stmt->error);
             }
             $stmt->close();
-            break;
+            header('Location: documents.php');
+            exit;
 
         case 'delete':
             if ($_SESSION['role'] !== 'admin') {
-                $response = ['status' => 'error', 'message' => 'Only admins can delete documents.'];
-                break;
+                $_SESSION['message'] = 'Only admins can delete documents.';
+                $_SESSION['message_type'] = 'error';
+                header('Location: documents.php');
+                exit;
             }
             $id = isset($_POST['id']) ? (int)validate($_POST['id']) : 0;
             if ($id <= 0) {
-                $response = ['status' => 'error', 'message' => 'Invalid document ID.'];
-                break;
+                $_SESSION['message'] = 'Invalid document ID.';
+                $_SESSION['message_type'] = 'error';
+                header('Location: documents.php');
+                exit;
             }
 
             // Fetch document name for logging
@@ -135,9 +145,11 @@ try {
             $stmt->execute();
             $result = $stmt->get_result();
             if ($result->num_rows === 0) {
-                $response = ['status' => 'error', 'message' => 'Document not found.'];
+                $_SESSION['message'] = 'Document not found.';
+                $_SESSION['message_type'] = 'error';
                 $stmt->close();
-                break;
+                header('Location: documents.php');
+                exit;
             }
             $name = $result->fetch_assoc()['name'];
             $stmt->close();
@@ -148,9 +160,11 @@ try {
             $stmt->execute();
             $count = $stmt->get_result()->fetch_assoc()['count'];
             if ($count > 0) {
-                $response = ['status' => 'error', 'message' => 'Cannot delete document: It is currently in use.'];
+                $_SESSION['message'] = 'Cannot delete document: It is currently in use.';
+                $_SESSION['message_type'] = 'error';
                 $stmt->close();
-                break;
+                header('Location: documents.php');
+                exit;
             }
             $stmt->close();
 
@@ -160,21 +174,26 @@ try {
             if ($stmt->execute()) {
                 if ($stmt->affected_rows > 0) {
                     logAction($conn, "Document Deleted", "Document ID: $id", "Name: $name");
-                    $response = ['status' => 'success', 'message' => 'Document deleted successfully.'];
+                    $_SESSION['message'] = 'Document deleted successfully.';
+                    $_SESSION['message_type'] = 'success';
                 } else {
-                    $response = ['status' => 'error', 'message' => 'Document not found.'];
+                    $_SESSION['message'] = 'Document not found.';
+                    $_SESSION['message_type'] = 'error';
                 }
             } else {
                 throw new Exception("Failed to delete document: " . $stmt->error);
             }
             $stmt->close();
-            break;
+            header('Location: documents.php');
+            exit;
 
         case 'get':
+            // This action remains JSON-based for AJAX
+            header('Content-Type: application/json');
             $id = isset($_GET['id']) ? (int)validate($_GET['id']) : 0;
             if ($id <= 0) {
-                $response = ['status' => 'error', 'message' => 'Invalid document ID.'];
-                break;
+                echo json_encode(['status' => 'error', 'message' => 'Invalid document ID.']);
+                exit;
             }
             $stmt = $conn->prepare("SELECT id, name, description, unit_price, form_needed, is_active, restrict_per_semester 
                                     FROM documents 
@@ -186,24 +205,24 @@ try {
                 $data = $result->fetch_assoc();
                 // Ensure unit_price is a string formatted to 2 decimals
                 $data['unit_price'] = number_format((float)$data['unit_price'], 2, '.', '');
-                $response = ['status' => 'success', 'data' => $data];
+                echo json_encode(['status' => 'success', 'data' => $data]);
             } else {
-                $response = ['status' => 'error', 'message' => 'Document not found.'];
+                echo json_encode(['status' => 'error', 'message' => 'Document not found.']);
             }
             $stmt->close();
-            break;
+            exit;
 
         default:
-            $response = ['status' => 'error', 'message' => 'Invalid action.'];
-            break;
+            $_SESSION['message'] = 'Invalid action.';
+            $_SESSION['message_type'] = 'error';
+            header('Location: documents.php');
+            exit;
     }
 } catch (Exception $e) {
     error_log("Error in document_actions.php: " . $e->getMessage());
-    $response = ['status' => 'error', 'message' => 'An error occurred. Please try again later.'];
+    $_SESSION['message'] = 'An error occurred. Please try again later.';
+    $_SESSION['message_type'] = 'error';
+    header('Location: documents.php');
+    exit;
 }
-
-// Output JSON response
-ob_end_clean();
-echo json_encode($response);
-exit;
 ?>
