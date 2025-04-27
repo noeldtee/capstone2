@@ -449,7 +449,7 @@ switch ($action) {
             exit;
         }
 
-        $stmt = $conn->prepare("SELECT id, studentid, firstname, middlename, lastname, email, profile, course_id, section_id, year_id, year_level, role, terms, is_ban FROM users WHERE id = ?");
+        $stmt = $conn->prepare("SELECT id, studentid, firstname, middlename, lastname, email, profile, course_id, section_id, year_id, year_level, role, terms, is_ban, verify_status FROM users WHERE id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -475,29 +475,53 @@ switch ($action) {
 
         $course_id = isset($_GET['course_id']) && is_numeric($_GET['course_id']) ? (int)$_GET['course_id'] : 0;
         $school_year_id = isset($_GET['school_year_id']) && is_numeric($_GET['school_year_id']) ? (int)$_GET['school_year_id'] : 0;
+        $year_level = isset($_GET['year_level']) ? validate($_GET['year_level']) : '';
 
-        if (!$course_id || !$school_year_id) {
-            $response = ['status' => 400, 'message' => 'Invalid course or school year ID.'];
+        if ($course_id <= 0 || $school_year_id <= 0) {
+            $response = ['status' => 400, 'message' => 'Invalid course or school year ID.', 'data' => []];
             header('Content-Type: application/json');
             echo json_encode($response);
             ob_end_flush();
             exit;
         }
 
-        if (!$conn) {
-            $response = ['status' => 500, 'message' => 'Database connection failed.'];
+        // Validate year level
+        $valid_year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+        if (!empty($year_level) && !in_array($year_level, $valid_year_levels)) {
+            $response = ['status' => 400, 'message' => 'Invalid year level.', 'data' => []];
             header('Content-Type: application/json');
             echo json_encode($response);
             ob_end_flush();
             exit;
         }
 
-        $stmt = $conn->prepare("SELECT s.id, s.section, c.name AS course_name, sy.year AS school_year 
-                                FROM sections s 
-                                JOIN courses c ON s.course_id = c.id 
-                                JOIN school_years sy ON s.school_year_id = sy.id 
-                                WHERE s.course_id = ? AND s.school_year_id = ?");
-        $stmt->bind_param("ii", $course_id, $school_year_id);
+        // Prepare query to fetch sections, including year_level filter
+        $query = "
+            SELECT s.*, sy.year AS school_year, c.name AS course_name 
+            FROM sections s 
+            JOIN school_years sy ON s.school_year_id = sy.id 
+            JOIN courses c ON s.course_id = c.id 
+            WHERE s.course_id = ? AND s.school_year_id = ?
+        ";
+        $params = [$course_id, $school_year_id];
+        $param_types = "ii";
+
+        if (!empty($year_level)) {
+            $query .= " AND s.year_level = ?";
+            $params[] = $year_level;
+            $param_types .= "s";
+        }
+
+        $stmt = $conn->prepare($query);
+        if (!$stmt) {
+            $response = ['status' => 500, 'message' => 'Failed to prepare statement: ' . $conn->error, 'data' => []];
+            header('Content-Type: application/json');
+            echo json_encode($response);
+            ob_end_flush();
+            exit;
+        }
+
+        $stmt->bind_param($param_types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
         $sections = [];
@@ -511,7 +535,9 @@ switch ($action) {
         echo json_encode($response);
         ob_end_flush();
         exit;
-}
 
-redirect('students.php?' . http_build_query($_GET), 'Invalid action.', 'danger');
+    default:
+        redirect('students.php?' . http_build_query($_GET), 'Invalid action.', 'danger');
+        break;
+}
 ?>

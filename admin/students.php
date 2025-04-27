@@ -256,7 +256,7 @@ $year_levels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
                         <small class="form-text text-muted">Must start with "MA" followed by numbers (e.g., MA1231232).</small>
                     </div>
                     <div class="mb-3">
-                        <label for="addFirstName" class="form150-label">First Name</label>
+                        <label for="addFirstName" class="form-label">First Name</label>
                         <input type="text" class="form-control" id="addFirstName" name="firstname" required>
                     </div>
                     <div class="mb-3">
@@ -565,10 +565,11 @@ document.getElementById('addYearLevel').addEventListener('change', function () {
     const section = document.getElementById('addSection');
     const courseId = document.getElementById('addCourse').value;
     const schoolYearId = document.getElementById('addSchoolYear').value;
-    if (this.value && courseId && schoolYearId) {
+    const yearLevel = this.value;
+    if (yearLevel && courseId && schoolYearId) {
         sectionGroup.style.display = 'block';
         section.innerHTML = '<option value="">Loading...</option>';
-        fetchSections(section, courseId, schoolYearId, null);
+        fetchSections(section, courseId, schoolYearId, yearLevel, null);
     } else {
         sectionGroup.style.display = 'none';
         section.innerHTML = '<option value="">Select Section</option>';
@@ -613,8 +614,9 @@ document.getElementById('editUserForm').addEventListener('submit', function (e) 
 });
 
 // Fetch Sections via AJAX
-function fetchSections(selectElement, courseId, schoolYearId, selectedSectionId) {
-    fetch(`./student_actions.php?action=get_sections&course_id=${courseId}&school_year_id=${schoolYearId}`)
+function fetchSections(selectElement, courseId, schoolYearId, yearLevel, selectedSectionId) {
+    const url = `./student_actions.php?action=get_sections&course_id=${courseId}&school_year_id=${schoolYearId}${yearLevel ? `&year_level=${encodeURIComponent(yearLevel)}` : ''}`;
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             selectElement.innerHTML = '<option value="">Select Section</option>';
@@ -622,14 +624,14 @@ function fetchSections(selectElement, courseId, schoolYearId, selectedSectionId)
                 data.data.forEach(section => {
                     const option = document.createElement('option');
                     option.value = section.id;
-                    option.textContent = `${section.section} (${section.course_name}, ${section.school_year})`;
+                    option.textContent = `${section.section} (${section.year_level}, ${section.course_name}, ${section.school_year})`;
                     if (selectedSectionId && section.id == selectedSectionId) {
                         option.selected = true;
                     }
                     selectElement.appendChild(option);
                 });
             } else {
-                selectElement.innerHTML = '<option value="">No sections available</option>';
+                selectElement.innerHTML = '<option value="">No sections available for this year level</option>';
             }
         })
         .catch(error => {
@@ -735,10 +737,11 @@ document.getElementById('editYearLevel').addEventListener('change', function () 
     const section = document.getElementById('editSection');
     const courseId = document.getElementById('editCourse').value;
     const schoolYearId = document.getElementById('editSchoolYear').value;
-    if (this.value && courseId && schoolYearId) {
+    const yearLevel = this.value;
+    if (yearLevel && courseId && schoolYearId) {
         sectionGroup.style.display = 'block';
         section.innerHTML = '<option value="">Loading...</option>';
-        fetchSections(section, courseId, schoolYearId, null);
+        fetchSections(section, courseId, schoolYearId, yearLevel, null);
     } else {
         sectionGroup.style.display = 'none';
         section.innerHTML = '<option value="">Select Section</option>';
@@ -811,7 +814,7 @@ document.querySelectorAll('.edit-user-btn').forEach(button => {
                         yearLevelGroup.style.display = 'block';
                         if (user.year_level && user.course_id && user.year_id) {
                             sectionGroup.style.display = 'block';
-                            fetchSections(document.getElementById('editSection'), user.course_id, user.year_id, user.section_id);
+                            fetchSections(document.getElementById('editSection'), user.course_id, user.year_id, user.year_level, user.section_id);
                         } else {
                             sectionGroup.style.display = 'none';
                             document.getElementById('editSection').innerHTML = '<option value="">Select Section</option>';
