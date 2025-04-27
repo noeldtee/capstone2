@@ -15,11 +15,12 @@ $offset = ($page - 1) * $requests_per_page;
 
 // Filter and search settings
 $status_filter = isset($_GET['status']) ? trim($_GET['status']) : 'all';
+$payment_status_filter = isset($_GET['payment_status']) ? trim($_GET['payment_status']) : 'all';
 $date_filter = isset($_GET['date']) ? trim($_GET['date']) : '';
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
 // Build the WHERE clause
-$where_clauses = ["r.status IN ('Pending', 'In Process', 'Ready to Pickup')", "r.archived = 0"];
+$where_clauses = ["r.status IN ('Pending', 'In Process', 'Ready to Pickup', 'To Release')", "r.archived = 0"];
 $params = [];
 $types = "";
 
@@ -35,6 +36,13 @@ if ($search) {
 if ($status_filter !== 'all') {
     $where_clauses[] = "r.status = ?";
     $params[] = $status_filter;
+    $types .= "s";
+}
+
+// Payment status filter
+if ($payment_status_filter !== 'all') {
+    $where_clauses[] = "r.payment_status = ?";
+    $params[] = $payment_status_filter;
     $types .= "s";
 }
 
@@ -61,7 +69,7 @@ $offset = ($page - 1) * $requests_per_page;
 
 // Fetch paginated requests
 $query = "SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
-                 r.unit_price, r.status, r.requested_date, r.file_path, r.remarks 
+                 r.unit_price, r.status, r.payment_status, r.payment_method, r.requested_date, r.file_path, r.remarks 
           FROM requests r 
           JOIN users u ON r.user_id = u.id 
           $where_sql 
@@ -109,6 +117,14 @@ while ($row = $result->fetch_assoc()) {
                         <option value="Pending" <?php echo $status_filter === 'Pending' ? 'selected' : ''; ?>>Pending</option>
                         <option value="In Process" <?php echo $status_filter === 'In Process' ? 'selected' : ''; ?>>In Process</option>
                         <option value="Ready to Pickup" <?php echo $status_filter === 'Ready to Pickup' ? 'selected' : ''; ?>>Ready to Pickup</option>
+                        <option value="To Release" <?php echo $status_filter === 'To Release' ? 'selected' : ''; ?>>To Release</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="payment_status" class="form-select form-select-sm">
+                        <option value="all" <?php echo $payment_status_filter === 'all' ? 'selected' : ''; ?>>All Payment Statuses</option>
+                        <option value="paid" <?php echo $payment_status_filter === 'paid' ? 'selected' : ''; ?>>Paid</option>
+                        <option value="Awaiting Payment" <?php echo $payment_status_filter === 'Awaiting Payment' ? 'selected' : ''; ?>>Awaiting Payment</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -126,16 +142,16 @@ while ($row = $result->fetch_assoc()) {
             <div class="record-header">
                 <div class="add">
                     <span>All Document Requests (<?php echo $total_requests; ?> found)</span>
-                        <button class="btn btn-primary btn-sm dropdown-toggle float-end" type="button" id="bulkActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
-                            Bulk Actions
-                        </button>
-                        <ul class="dropdown-menu" aria-labelledby="bulkActionsDropdown">
-                            <li><a class="dropdown-item" href="#" onclick="bulkApprove(); return false;">Approve Pending</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="bulkMarkReady(); return false;">Mark In Process as Ready</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="bulkMarkCompleted(); return false;">Mark Ready as Completed</a></li>
-                            <li><a class="dropdown-item text-danger" href="#" onclick="bulkReject(); return false;">Reject Pending</a></li>
-                        </ul>
+                    <button class="btn btn-primary btn-sm dropdown-toggle float-end" type="button" id="bulkActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                        Bulk Actions
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="bulkActionsDropdown">
+                        <li><a class="dropdown-item" href="#" onclick="bulkApprove(); return false;">Approve Pending</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="bulkMarkReady(); return false;">Mark In Process as Ready</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="bulkMarkCompleted(); return false;">Mark To Release as Completed</a></li>
+                        <li><a class="dropdown-item text-danger" href="#" onclick="bulkReject(); return false;">Reject Pending</a></li>
+                    </ul>
                 </div>
             </div>
             <form id="bulk-form">
@@ -147,15 +163,15 @@ while ($row = $result->fetch_assoc()) {
                             <th>Document Type</th>
                             <th>Student Name</th>
                             <th>Price</th>
+                            <th>Payment Status</th>
+                            <th>Payment Method</th>
                             <th>Requested Date</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($paginated_requests)): ?>
-                            <tr><td colspan="8" class="text-center">No active requests found.</td></tr>
-                        <?php else: ?>
+                        <?php if (!empty($paginated_requests)): ?>
                             <?php foreach ($paginated_requests as $request): ?>
                                 <tr>
                                     <td>
@@ -165,6 +181,18 @@ while ($row = $result->fetch_assoc()) {
                                     <td><?php echo htmlspecialchars($request['document_type']); ?></td>
                                     <td><?php echo htmlspecialchars($request['student_name']); ?></td>
                                     <td>₱<?php echo number_format($request['unit_price'], 2); ?></td>
+                                    <td>
+                                        <span class="badge <?php 
+                                            switch (strtolower($request['payment_status'])) {
+                                                case 'paid': echo 'bg-success'; break;
+                                                case 'awaiting payment': echo 'bg-info'; break;
+                                                case 'pending': echo 'bg-warning'; break;
+                                            }
+                                        ?>">
+                                            <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $request['payment_status']))); ?>
+                                        </span>
+                                    </td>
+                                    <td><?php echo htmlspecialchars(ucwords($request['payment_method'] ?: 'N/A')); ?></td>
                                     <td><?php echo date('F j, Y', strtotime($request['requested_date'])); ?></td>
                                     <td>
                                         <span class="badge <?php 
@@ -172,6 +200,7 @@ while ($row = $result->fetch_assoc()) {
                                                 case 'pending': echo 'bg-warning'; break;
                                                 case 'in process': echo 'bg-info'; break;
                                                 case 'ready to pickup': echo 'bg-success'; break;
+                                                case 'to release': echo 'bg-success'; break;
                                             }
                                         ?>">
                                             <?php echo htmlspecialchars($request['status']); ?>
@@ -193,7 +222,7 @@ while ($row = $result->fetch_assoc()) {
                                                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
                                                 Mark Ready
                                             </button>
-                                        <?php elseif ($request['status'] === 'Ready to Pickup'): ?>
+                                        <?php elseif ($request['status'] === 'To Release'): ?>
                                             <button type="button" class="btn btn-primary btn-sm mark-completed-btn" onclick="markCompleted(<?php echo $request['id']; ?>, this)">
                                                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
                                                 Mark Completed
@@ -202,6 +231,8 @@ while ($row = $result->fetch_assoc()) {
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr><td colspan="10" class="text-center">No active requests found.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -260,9 +291,10 @@ while ($row = $result->fetch_assoc()) {
                         <p><strong>ID:</strong> <span id="modal-id"></span></p>
                         <p><strong>Document Type:</strong> <span id="modal-document-type"></span></p>
                         <p><strong>Price:</strong> <span id="modal-price"></span></p>
+                        <p><strong>Payment Status:</strong> <span id="modal-payment-status"></span></p>
+                        <p><strong>Payment Method:</strong> <span id="modal-payment-method"></span></p>
                         <p><strong>Requested Date:</strong> <span id="modal-requested-date"></span></p>
                         <p><strong>Status:</strong> <span id="modal-status"></span></p>
-                        <p><strong>Payment Status:</strong> <span id="modal-payment-status"></span></p>
                         <p><strong>Reason for Request:</strong> <span id="modal-remarks"></span></p>
                         <p><strong>Uploaded File:</strong> <span id="modal-file"></span></p>
                         <p><strong>Rejection Reason:</strong> <span id="modal-rejection-reason"></span></p>
@@ -526,13 +558,13 @@ function bulkMarkReady() {
 // Bulk mark completed
 function bulkMarkCompleted() {
     const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
-        .filter(checkbox => checkbox.dataset.status === 'Ready to Pickup')
+        .filter(checkbox => checkbox.dataset.status === 'To Release')
         .map(checkbox => checkbox.value);
     if (selected.length === 0) {
-        alert('Please select at least one Ready to Pickup request to mark as completed.');
+        alert('Please select at least one To Release request to mark as completed.');
         return;
     }
-    if (confirm(`Mark ${selected.length} selected Ready to Pickup request(s) as Completed?`)) {
+    if (confirm(`Mark ${selected.length} selected To Release request(s) as Completed?`)) {
         const button = document.getElementById('bulkActionsDropdown');
         showSpinner(button, 'Completing...');
         fetch('request_management.php', {
@@ -605,7 +637,7 @@ document.querySelectorAll('.view-btn').forEach(button => {
                 if (data.status === 'success') {
                     const request = data.data;
                     // Student Information
-                    document.getElementById('modal-student-name').textContent = request.student_name;
+                    document.getElementById('modal-student-name').textContent = request.student_name || 'N/A';
                     document.getElementById('modal-email').textContent = request.email || 'N/A';
                     document.getElementById('modal-number').textContent = request.number || 'N/A';
                     document.getElementById('modal-course').textContent = request.course_name || 'N/A';
@@ -614,60 +646,38 @@ document.querySelectorAll('.view-btn').forEach(button => {
                     document.getElementById('modal-year-level').textContent = request.year_level || 'N/A';
                     // Request Information
                     document.getElementById('modal-id').textContent = request.id;
-                    document.getElementById('modal-document-type').textContent = request.document_type;
+                    document.getElementById('modal-document-type').textContent = request.document_type || 'N/A';
                     document.getElementById('modal-price').textContent = '₱' + parseFloat(request.unit_price).toFixed(2);
+                    document.getElementById('modal-payment-status').textContent = request.payment_status ? ucwords(request.payment_status.replace('_', ' ')) : 'N/A';
+                    document.getElementById('modal-payment-method').textContent = request.payment_method ? ucwords(request.payment_method) : 'N/A';
                     document.getElementById('modal-requested-date').textContent = new Date(request.requested_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-                    document.getElementById('modal-status').textContent = request.status;
-                    document.getElementById('modal-payment-status').textContent = request.payment_status || 'N/A';
+                    document.getElementById('modal-status').textContent = request.status || 'N/A';
                     document.getElementById('modal-remarks').textContent = request.remarks || 'N/A';
                     document.getElementById('modal-rejection-reason').textContent = request.rejection_reason || 'N/A';
                     const fileSpan = document.getElementById('modal-file');
                     if (request.file_path) {
-                        fileSpan.innerHTML = `<a href="../${request.file_path}" target="_blank" download>Download File</a>`;
+                        fileSpan.innerHTML = `<a href="../${request.file_path}" target="_blank">View File</a>`;
                     } else {
-                        fileSpan.textContent = 'No file uploaded';
+                        fileSpan.textContent = 'None';
                     }
-                    // QR Code
-                    const qrCodeDiv = document.getElementById('qr-code');
-                    const qrCodeCanvas = document.getElementById('qr-code-canvas');
-                    const downloadQrLink = document.getElementById('download-qr');
-                    qrCodeCanvas.innerHTML = ''; // Clear previous QR code
-                    if (request.status === 'Ready to Pickup') {
-                        qrCodeDiv.style.display = 'block';
-                        new QRCode(qrCodeCanvas, {
-                            text: `request_id:${request.id}`,
-                            width: 150,
-                            height: 150
-                        });
-                        // Center the canvas
-                        const canvas = qrCodeCanvas.querySelector('canvas');
-                        if (canvas) {
-                            canvas.style.display = 'block';
-                            canvas.style.margin = '0 auto';
-                        }
-                        downloadQrLink.style.display = 'inline-block';
-                        downloadQrLink.href = qrCodeCanvas.querySelector('canvas').toDataURL('image/png');
-                        downloadQrLink.download = `request_${request.id}_qr.png`;
-                    } else {
-                        qrCodeDiv.style.display = 'none';
-                        downloadQrLink.style.display = 'none';
-                    }
+                    // Hide QR code section by default
+                    document.getElementById('qr-code').style.display = 'none';
+                    document.getElementById('download-qr').style.display = 'none';
+                    document.getElementById('qr-code-canvas').innerHTML = '';
                 } else {
                     alert('Error: ' + data.message);
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to load request details.');
-            });
+            .catch(error => alert('Failed to fetch request details: ' + error.message));
     });
 });
+
+// Utility function to capitalize words
+function ucwords(str) {
+    return str.toLowerCase().replace(/(^([a-zA-Z\p{M}]))|([ -][a-zA-Z\p{M}])/g, function(s) {
+        return s.toUpperCase();
+    });
+}
 </script>
 
 <?php require 'includes/footer.php'; ?>
-<!-- Include QRCode.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<?php
-// Close database connection
-$conn->close();
-?>

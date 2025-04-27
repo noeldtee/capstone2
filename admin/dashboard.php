@@ -28,6 +28,16 @@ $stmt = $conn->prepare("SELECT COUNT(*) as total FROM requests WHERE status = 'R
 $stmt->execute();
 $total_ready_to_pickup = $stmt->get_result()->fetch_assoc()['total'];
 
+// Total To Release
+$stmt = $conn->prepare("SELECT COUNT(*) as total FROM requests WHERE status = 'To Release'");
+$stmt->execute();
+$total_to_release = $stmt->get_result()->fetch_assoc()['total'];
+
+// Total Completed
+$stmt = $conn->prepare("SELECT COUNT(*) as total FROM requests WHERE status = 'Completed'");
+$stmt->execute();
+$total_completed = $stmt->get_result()->fetch_assoc()['total'];
+
 // Fetch the 10 most recent requests (most recent first)
 $stmt = $conn->prepare("SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
                                r.unit_price, r.status, r.requested_date 
@@ -104,6 +114,24 @@ while ($row = $result->fetch_assoc()) {
                     <small>Ready to Pickup</small>
                 </div>
             </div>
+            <div class="card">
+                <div class="card-head">
+                    <h2><?php echo $total_to_release; ?></h2>
+                    <i class="fa-solid fa-truck"></i>
+                </div>
+                <div class="card-progress">
+                    <small>Total To Release</small>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-head">
+                    <h2><?php echo $total_completed; ?></h2>
+                    <i class="fa-solid fa-check-double"></i>
+                </div>
+                <div class="card-progress">
+                    <small>Total Completed</small>
+                </div>
+            </div>
         </div>
         <!-- Records Table -->
         <div class="records table-responsive">
@@ -142,6 +170,7 @@ while ($row = $result->fetch_assoc()) {
                                                 case 'pending': echo 'bg-warning'; break;
                                                 case 'in process': echo 'bg-info'; break;
                                                 case 'ready to pickup': echo 'bg-success'; break;
+                                                case 'to release': echo 'bg-success'; break;
                                                 case 'completed': echo 'bg-primary'; break;
                                                 case 'rejected': echo 'bg-danger'; break;
                                             }
@@ -229,7 +258,7 @@ document.querySelectorAll('.view-btn').forEach(button => {
                 if (data.status === 'success') {
                     const request = data.data;
                     // Student Information
-                    document.getElementById('modal-student-name').textContent = request.student_name;
+                    document.getElementById('modal-student-name').textContent = request.student_name || 'N/A';
                     document.getElementById('modal-email').textContent = request.email || 'N/A';
                     document.getElementById('modal-number').textContent = request.number || 'N/A';
                     document.getElementById('modal-course').textContent = request.course_name || 'N/A';
@@ -238,11 +267,11 @@ document.querySelectorAll('.view-btn').forEach(button => {
                     document.getElementById('modal-year-level').textContent = request.year_level || 'N/A';
                     // Request Information
                     document.getElementById('modal-id').textContent = request.id;
-                    document.getElementById('modal-document-type').textContent = request.document_type;
+                    document.getElementById('modal-document-type').textContent = request.document_type || 'N/A';
                     document.getElementById('modal-price').textContent = '₱' + parseFloat(request.unit_price).toFixed(2);
                     document.getElementById('modal-requested-date').textContent = new Date(request.requested_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-                    document.getElementById('modal-status').textContent = request.status;
-                    document.getElementById('modal-payment-status').textContent = request.payment_status || 'N/A';
+                    document.getElementById('modal-status').textContent = request.status || 'N/A';
+                    document.getElementById('modal-payment-status').textContent = request.payment_status ? ucwords(request.payment_status.replace('_', ' ')) : 'N/A';
                     document.getElementById('modal-remarks').textContent = request.remarks || 'N/A';
                     document.getElementById('modal-rejection-reason').textContent = request.rejection_reason || 'N/A';
                     const fileSpan = document.getElementById('modal-file');
@@ -286,6 +315,13 @@ document.querySelectorAll('.view-btn').forEach(button => {
             });
     });
 });
+
+// Utility function to capitalize words
+function ucwords(str) {
+    return str.toLowerCase().replace(/(^([a-zA-Z\p{M}]))|([ -][a-zA-Z\p{M}])/g, function(s) {
+        return s.toUpperCase();
+    });
+}
 </script>
 
 <?php include('includes/footer.php'); ?>

@@ -176,7 +176,7 @@ try {
             $stmt = $conn->prepare("
                 SELECT r.id, r.document_type, CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
                        r.unit_price, r.status, r.requested_date, r.file_path, r.remarks, r.rejection_reason, 
-                       r.payment_status, u.email, u.number, u.year_level, 
+                       r.payment_status, r.payment_method, u.email, u.number, u.year_level, 
                        sy.year AS school_year, c.name AS course_name, s.section AS section_name
                 FROM requests r 
                 JOIN users u ON r.user_id = u.id 

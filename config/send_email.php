@@ -1,3 +1,4 @@
+```php
 <?php
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -252,3 +253,83 @@ function sendRejectionNotification($student_email, $firstname, $lastname, $docum
         return ['success' => false, 'error' => $mail->ErrorInfo];
     }
 }
+
+function sendPaymentConfirmation($student_email, $firstname, $lastname, $document_type, $request_id, $payment_method)
+{
+    $mail = new PHPMailer(true);
+    try {
+        $mail->SMTPDebug = 0;
+        $mail->Debugoutput = function ($str, $level) {
+            error_log("PHPMailer Debug [$level]: $str");
+        };
+
+        $mail->isSMTP();
+        $mail->SMTPAuth = true;
+        $mail->Host = 'smtp.gmail.com';
+        $mail->Username = 'bpcregistrar68@gmail.com';
+        $mail->Password = 'vgcw ukef maor oubh';
+        $mail->SMTPSecure = "tls";
+        $mail->Port = 587;
+
+        $mail->setFrom('bpcregistrar68@gmail.com', 'BPC Registrar');
+        $mail->addAddress($student_email);
+        $mail->isHTML(true);
+        $mail->Subject = 'Payment Confirmation - Bulacan Polytechnic College Registrar';
+
+        $mail->Body = '
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Payment Confirmation</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f4f4;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <!-- Header -->
+                <tr>
+                    <td style="padding: 20px; text-align: center; background-color: #2e7d32; border-top-left-radius: 10px; border-top-right-radius: 10px;">
+                        <img src="https://bpcsdrs.com/assets/images/logo.png" alt="BPC Logo" width="80" height="76" style="display: block; margin: 0 auto;">
+                        <h2 style="color: #ffffff; margin: 10px 0 0; font-size: 24px;">Bulacan Polytechnic College Registrar</h2>
+                    </td>
+                </tr>
+                <!-- Body -->
+                <tr>
+                    <td style="padding: 30px; text-align: center;">
+                        <h3 style="color: #2e7d32; margin: 0 0 15px; font-size: 20px;">Payment Confirmation</h3>
+                        <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 20px;">
+                            Hi ' . htmlspecialchars($firstname, ENT_QUOTES, 'UTF-8') . ' ' . htmlspecialchars($lastname, ENT_QUOTES, 'UTF-8') . ',<br>
+                            Your payment for <strong>' . htmlspecialchars($document_type, ENT_QUOTES, 'UTF-8') . '</strong> (Request ID: ' . htmlspecialchars($request_id, ENT_QUOTES, 'UTF-8') . ') via <strong>' . htmlspecialchars($payment_method, ENT_QUOTES, 'UTF-8') . '</strong> has been successfully confirmed.
+                        </p>
+                        <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 20px;">
+                            Your document request is now being processed. You will be notified once it is ready for pickup.
+                        </p>
+                    </td>
+                </tr>
+                <!-- Footer -->
+                <tr>
+                    <td style="padding: 20px; text-align: center; background-color: #f4f4f4; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;">
+                        <p style="color: #666666; font-size: 12px; margin: 0;">
+                            © ' . date('Y') . ' Bulacan Polytechnic College. All rights reserved.<br>
+                            If you did not make this payment, please contact us immediately.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        ';
+
+        $mail->AltBody = "Hi " . htmlspecialchars($firstname, ENT_QUOTES, 'UTF-8') . " " . htmlspecialchars($lastname, ENT_QUOTES, 'UTF-8') . ",\n\nYour payment for " . htmlspecialchars($document_type, ENT_QUOTES, 'UTF-8') . " (Request ID: " . htmlspecialchars($request_id, ENT_QUOTES, 'UTF-8') . ") via " . htmlspecialchars($payment_method, ENT_QUOTES, 'UTF-8') . " has been successfully confirmed.\n\nYour document request is now being processed. You will be notified once it is ready for pickup.\n\nThank you,\nBPC Registrar Team";
+
+        $mail->send();
+        error_log("Payment confirmation email successfully sent to $student_email for Request ID: $request_id");
+        return ['success' => true];
+    } catch (Exception $e) {
+        $error_message = "Payment confirmation email failed for $student_email: {$mail->ErrorInfo}";
+        error_log($error_message);
+        return ['success' => false, 'error' => $mail->ErrorInfo];
+    }
+}
+
+?>

@@ -13,8 +13,8 @@ require '../config/send_email.php';
 require '../libs/phpqrcode/qrlib.php';
 
 // Check if user is logged in
-if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !isset($_SESSION['role']) || !in_array($_SESSION['role'], ['registrar', 'staff'])) {
-    $response = ['status' => 'error', 'message' => 'Please log in as a registrar or staff to perform this action.'];
+if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true || !isset($_SESSION['role']) || !in_array($_SESSION['role'], ['registrar', 'staff', 'cashier'])) {
+    $response = ['status' => 'error', 'message' => 'Please log in as a registrar, staff, or cashier to perform this action.'];
     ob_end_clean();
     header('Content-Type: application/json');
     echo json_encode($response);
@@ -51,11 +51,12 @@ try {
                     CONCAT(u.firstname, ' ', u.lastname) AS student_name, 
                     r.unit_price, 
                     r.status, 
+                    r.payment_status,
+                    r.payment_method,
                     r.requested_date, 
                     r.file_path, 
                     r.remarks, 
-                    r.rejection_reason, 
-                    r.payment_status,
+                    r.rejection_reason,
                     u.number, 
                     u.email, 
                     u.year_level, 
@@ -81,8 +82,25 @@ try {
             break;
 
         case 'approve':
+            if ($_SESSION['role'] !== 'registrar' && $_SESSION['role'] !== 'staff') {
+                $response = ['status' => 'error', 'message' => 'Unauthorized action.'];
+                break;
+            }
             $id = (int)$_POST['id'];
-            $stmt = $conn->prepare("SELECT r.document_type, u.email, u.firstname, u.lastname, u.id AS user_id 
+            // Debug: Log request details
+            $debug_stmt = $conn->prepare("SELECT status, payment_status, payment_method FROM requests WHERE id = ?");
+            $debug_stmt->bind_param("i", $id);
+            $debug_stmt->execute();
+            $debug_result = $debug_stmt->get_result();
+            if ($debug_result->num_rows > 0) {
+                $debug_row = $debug_result->fetch_assoc();
+                error_log("Approve Request ID: $id, Status: {$debug_row['status']}, Payment Status: {$debug_row['payment_status']}, Payment Method: {$debug_row['payment_method']}");
+            } else {
+                error_log("Approve Request ID: $id not found in requests table.");
+            }
+            $debug_stmt->close();
+        
+            $stmt = $conn->prepare("SELECT r.document_type, r.payment_status, r.payment_method, u.email, u.firstname, u.lastname, u.id AS user_id 
                                     FROM requests r 
                                     JOIN users u ON r.user_id = u.id 
                                     WHERE r.id = ? AND r.status = 'Pending'");
@@ -92,16 +110,24 @@ try {
             if ($result->num_rows > 0) {
                 $row = $result->fetch_assoc();
                 $document_type = $row['document_type'];
+                $current_payment_status = $row['payment_status'];
+                $payment_method = $row['payment_method'];
                 $student_email = $row['email'];
                 $firstname = $row['firstname'];
                 $lastname = $row['lastname'];
                 $user_id = $row['user_id'];
-
-                $stmt = $conn->prepare("UPDATE requests SET status = 'In Process', updated_at = NOW() WHERE id = ? AND status = 'Pending'");
-                $stmt->bind_param("i", $id);
+        
+                // Determine the new payment status
+                $new_payment_status = $current_payment_status;
+                if (strtolower($payment_method) === 'cash' && strtolower($current_payment_status) !== 'paid') {
+                    $new_payment_status = 'Awaiting Payment';
+                }
+        
+                $stmt = $conn->prepare("UPDATE requests SET status = 'In Process', payment_status = ?, updated_at = NOW() WHERE id = ? AND status = 'Pending'");
+                $stmt->bind_param("si", $new_payment_status, $id);
                 if ($stmt->execute() && $stmt->affected_rows > 0) {
-                    logAction($conn, 'Approve Request', "Request ID: $id", "Status changed to In Process");
-
+                    logAction($conn, 'Approve Request', "Request ID: $id", "Status changed to In Process, Payment Status set to $new_payment_status");
+        
                     $email_result = sendApprovalNotification($student_email, $firstname, $lastname, $document_type, $id);
                     if ($email_result['success']) {
                         logAction($conn, 'Email Sent', "Request ID: $id", "Approval notification sent to $student_email");
@@ -109,7 +135,7 @@ try {
                         $error_message = $email_result['error'] ?? 'Unknown error';
                         logAction($conn, 'Email Failed', "Request ID: $id", "Failed to send approval notification to $student_email: $error_message");
                     }
-
+        
                     $message = "Your $document_type (Request ID: $id) has been approved and is now In Process.";
                     $link = "../users/history.php?id=$id";
                     $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
@@ -120,7 +146,7 @@ try {
                         $error_message = $conn->error;
                         logAction($conn, 'Notification Failed', "Request ID: $id", "Failed to create approval notification for user $user_id: $error_message");
                     }
-
+        
                     $_SESSION['message'] = "Request ID $id approved successfully.";
                     $_SESSION['message_type'] = "success";
                     $response = ['status' => 'success', 'message' => $_SESSION['message']];
@@ -134,6 +160,10 @@ try {
             break;
 
         case 'reject':
+            if ($_SESSION['role'] !== 'registrar' && $_SESSION['role'] !== 'staff') {
+                $response = ['status' => 'error', 'message' => 'Unauthorized action.'];
+                break;
+            }
             $id = (int)$_POST['id'];
             $rejection_reason = trim($_POST['rejection_reason']);
             if (empty($rejection_reason)) {
@@ -192,6 +222,10 @@ try {
             break;
 
         case 'mark_ready':
+            if ($_SESSION['role'] !== 'registrar' && $_SESSION['role'] !== 'staff') {
+                $response = ['status' => 'error', 'message' => 'Unauthorized action.'];
+                break;
+            }
             $id = (int)$_POST['id'];
             $pickup_token = bin2hex(random_bytes(16));
             $stmt = $conn->prepare("SELECT r.document_type, u.email, u.firstname, u.lastname, u.id AS user_id 
@@ -230,6 +264,11 @@ try {
                         throw $e;
                     }
 
+                    // Check for To Release status
+                    $stmt = $conn->prepare("UPDATE requests SET status = 'To Release' WHERE id = ? AND payment_status = 'paid' AND status = 'Ready to Pickup'");
+                    $stmt->bind_param("i", $id);
+                    $stmt->execute();
+
                     logAction($conn, 'Mark Ready', "Request ID: $id", "Status changed to Ready to Pickup");
 
                     $email_result = sendPickupNotification($student_email, $firstname, $lastname, $document_type, $id, $qr_file);
@@ -263,12 +302,81 @@ try {
             $stmt->close();
             break;
 
+        case 'mark_paid':
+            if ($_SESSION['role'] !== 'cashier') {
+                $response = ['status' => 'error', 'message' => 'Unauthorized action.'];
+                break;
+            }
+            $id = (int)$_POST['id'];
+            $stmt = $conn->prepare("SELECT r.document_type, r.unit_price, u.id AS user_id 
+                                    FROM requests r 
+                                    JOIN users u ON r.user_id = u.id 
+                                    WHERE r.id = ? AND r.payment_status = 'Awaiting Payment'");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+                $document_type = $row['document_type'];
+                $unit_price = $row['unit_price'];
+                $user_id = $row['user_id'];
+
+                // Insert payment record
+                $payment_method = 'Cash';
+                $payment_amount = (float)$unit_price;
+                $payment_status = 'PAID';
+                $description = "Cash payment for document request: $document_type";
+                $stmt_payment = $conn->prepare("INSERT INTO payments (request_id, payment_method, amount, payment_status, description, payment_date, created_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
+                $stmt_payment->bind_param("isdss", $id, $payment_method, $payment_amount, $payment_status, $description);
+                if (!$stmt_payment->execute()) {
+                    throw new Exception('Failed to insert payment record: ' . $stmt_payment->error);
+                }
+                $stmt_payment->close();
+
+                // Update request
+                $stmt = $conn->prepare("UPDATE requests SET payment_status = 'paid', payment_method = 'cash', updated_at = NOW() WHERE id = ? AND payment_status = 'Awaiting Payment'");
+                $stmt->bind_param("i", $id);
+                if ($stmt->execute() && $stmt->affected_rows > 0) {
+                    // Check for To Release status
+                    $stmt = $conn->prepare("UPDATE requests SET status = 'To Release' WHERE id = ? AND payment_status = 'paid' AND status = 'Ready to Pickup'");
+                    $stmt->bind_param("i", $id);
+                    $stmt->execute();
+
+                    logAction($conn, 'Mark Paid', "Request ID: $id", "Payment status changed to paid, method set to cash");
+
+                    $message = "Your $document_type (Request ID: $id) payment has been confirmed via Cash.";
+                    $link = "../users/history.php?id=$id";
+                    $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, link, is_read, created_at) VALUES (?, ?, ?, 0, NOW())");
+                    $stmt->bind_param("iss", $user_id, $message, $link);
+                    if ($stmt->execute()) {
+                        logAction($conn, 'Notification Created', "Request ID: $id", "Payment confirmation notification sent to user $user_id");
+                    } else {
+                        $error_message = $conn->error;
+                        logAction($conn, 'Notification Failed', "Request ID: $id", "Failed to create payment confirmation notification for user $user_id: $error_message");
+                    }
+
+                    $_SESSION['message'] = "Request ID $id marked as paid.";
+                    $_SESSION['message_type'] = "success";
+                    $response = ['status' => 'success', 'message' => $_SESSION['message']];
+                } else {
+                    $response = ['status' => 'error', 'message' => 'Failed to mark request as paid or request is not in Awaiting Payment status.'];
+                }
+            } else {
+                $response = ['status' => 'error', 'message' => 'Request not found or not in Awaiting Payment status.'];
+            }
+            $stmt->close();
+            break;
+
         case 'mark_completed':
+            if ($_SESSION['role'] !== 'registrar' && $_SESSION['role'] !== 'staff') {
+                $response = ['status' => 'error', 'message' => 'Unauthorized action.'];
+                break;
+            }
             $id = (int)$_POST['id'];
             $stmt = $conn->prepare("SELECT r.document_type, u.id AS user_id 
                                     FROM requests r 
                                     JOIN users u ON r.user_id = u.id 
-                                    WHERE r.id = ? AND r.status = 'Ready to Pickup'");
+                                    WHERE r.id = ? AND r.status = 'To Release'");
             $stmt->bind_param("i", $id);
             $stmt->execute();
             $result = $stmt->get_result();
@@ -277,7 +385,7 @@ try {
                 $document_type = $row['document_type'];
                 $user_id = $row['user_id'];
 
-                $stmt = $conn->prepare("UPDATE requests SET status = 'Completed', pickup_token = NULL, updated_at = NOW() WHERE id = ? AND status = 'Ready to Pickup'");
+                $stmt = $conn->prepare("UPDATE requests SET status = 'Completed', pickup_token = NULL, updated_at = NOW() WHERE id = ? AND status = 'To Release'");
                 $stmt->bind_param("i", $id);
                 if ($stmt->execute() && $stmt->affected_rows > 0) {
                     $qr_file = "../Uploads/qrcodes/request_$id.png";
@@ -302,22 +410,26 @@ try {
                     $_SESSION['message_type'] = "success";
                     $response = ['status' => 'success', 'message' => $_SESSION['message']];
                 } else {
-                    $response = ['status' => 'error', 'message' => 'Failed to mark request as Completed or request is not Ready to Pickup.'];
+                    $response = ['status' => 'error', 'message' => 'Failed to mark request as Completed or request is not in To Release status.'];
                 }
             } else {
-                $response = ['status' => 'error', 'message' => 'Request not found or not in Ready to Pickup status.'];
+                $response = ['status' => 'error', 'message' => 'Request not found or not in To Release status.'];
             }
             $stmt->close();
             break;
 
         case 'bulk_approve':
+            if ($_SESSION['role'] !== 'registrar' && $_SESSION['role'] !== 'staff') {
+                $response = ['status' => 'error', 'message' => 'Unauthorized action.'];
+                break;
+            }
             $ids = isset($_POST['ids']) ? array_map('intval', explode(',', $_POST['ids'])) : [];
             if (empty($ids)) {
                 $response = ['status' => 'error', 'message' => 'No requests selected.'];
                 break;
             }
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $stmt = $conn->prepare("SELECT r.id, r.document_type, u.email, u.firstname, u.lastname, u.id AS user_id 
+            $stmt = $conn->prepare("SELECT r.id, r.document_type, r.payment_status, r.payment_method, u.email, u.firstname, u.lastname, u.id AS user_id 
                                     FROM requests r 
                                     JOIN users u ON r.user_id = u.id 
                                     WHERE r.id IN ($placeholders) AND r.status = 'Pending'");
@@ -329,16 +441,24 @@ try {
             while ($row = $result->fetch_assoc()) {
                 $request_id = $row['id'];
                 $document_type = $row['document_type'];
+                $current_payment_status = $row['payment_status'];
+                $payment_method = $row['payment_method'];
                 $student_email = $row['email'];
                 $firstname = $row['firstname'];
                 $lastname = $row['lastname'];
                 $user_id = $row['user_id'];
 
-                $update_stmt = $conn->prepare("UPDATE requests SET status = 'In Process', updated_at = NOW() WHERE id = ? AND status = 'Pending'");
-                $update_stmt->bind_param("i", $request_id);
+                // Determine the new payment status
+                $new_payment_status = $current_payment_status;
+                if (strtolower($payment_method) === 'cash' && strtolower($current_payment_status) !== 'paid') {
+                    $new_payment_status = 'Awaiting Payment';
+                }
+
+                $update_stmt = $conn->prepare("UPDATE requests SET status = 'In Process', payment_status = ?, updated_at = NOW() WHERE id = ? AND status = 'Pending'");
+                $update_stmt->bind_param("si", $new_payment_status, $request_id);
                 if ($update_stmt->execute() && $update_stmt->affected_rows > 0) {
                     $approved_count++;
-                    logAction($conn, 'Bulk Approve Request', "Request ID: $request_id", "Status changed to In Process");
+                    logAction($conn, 'Bulk Approve Request', "Request ID: $request_id", "Status changed to In Process, Payment Status set to $new_payment_status");
 
                     $email_result = sendApprovalNotification($student_email, $firstname, $lastname, $document_type, $request_id);
                     if ($email_result['success']) {
@@ -380,6 +500,10 @@ try {
             break;
 
         case 'bulk_mark_ready':
+            if ($_SESSION['role'] !== 'registrar' && $_SESSION['role'] !== 'staff') {
+                $response = ['status' => 'error', 'message' => 'Unauthorized action.'];
+                break;
+            }
             $ids = isset($_POST['ids']) ? array_map('intval', explode(',', $_POST['ids'])) : [];
             if (empty($ids)) {
                 $response = ['status' => 'error', 'message' => 'No requests selected.'];
@@ -427,6 +551,11 @@ try {
                         throw $e;
                     }
 
+                    // Check for To Release status
+                    $update_stmt = $conn->prepare("UPDATE requests SET status = 'To Release' WHERE id = ? AND payment_status = 'paid' AND status = 'Ready to Pickup'");
+                    $update_stmt->bind_param("i", $request_id);
+                    $update_stmt->execute();
+
                     logAction($conn, 'Bulk Mark Ready', "Request ID: $request_id", "Status changed to Ready to Pickup");
 
                     $email_result = sendPickupNotification($student_email, $firstname, $lastname, $document_type, $request_id, $qr_file);
@@ -469,6 +598,10 @@ try {
             break;
 
         case 'bulk_mark_completed':
+            if ($_SESSION['role'] !== 'registrar' && $_SESSION['role'] !== 'staff') {
+                $response = ['status' => 'error', 'message' => 'Unauthorized action.'];
+                break;
+            }
             $ids = isset($_POST['ids']) ? array_map('intval', explode(',', $_POST['ids'])) : [];
             if (empty($ids)) {
                 $response = ['status' => 'error', 'message' => 'No requests selected.'];
@@ -478,7 +611,7 @@ try {
             $stmt = $conn->prepare("SELECT r.id, r.document_type, u.id AS user_id 
                                     FROM requests r 
                                     JOIN users u ON r.user_id = u.id 
-                                    WHERE r.id IN ($placeholders) AND r.status = 'Ready to Pickup'");
+                                    WHERE r.id IN ($placeholders) AND r.status = 'To Release'");
             $stmt->bind_param(str_repeat('i', count($ids)), ...$ids);
             $stmt->execute();
             $result = $stmt->get_result();
@@ -489,7 +622,7 @@ try {
                 $document_type = $row['document_type'];
                 $user_id = $row['user_id'];
 
-                $update_stmt = $conn->prepare("UPDATE requests SET status = 'Completed', pickup_token = NULL, updated_at = NOW() WHERE id = ? AND status = 'Ready to Pickup'");
+                $update_stmt = $conn->prepare("UPDATE requests SET status = 'Completed', pickup_token = NULL, updated_at = NOW() WHERE id = ? AND status = 'To Release'");
                 $update_stmt->bind_param("i", $request_id);
                 if ($update_stmt->execute() && $update_stmt->affected_rows > 0) {
                     $completed_count++;
@@ -527,11 +660,15 @@ try {
                 $_SESSION['message_type'] = "success";
                 $response = ['status' => 'success', 'message' => $_SESSION['message']];
             } else {
-                $response = ['status' => 'error', 'message' => 'No requests were marked as Completed. Ensure the selected requests are Ready to Pickup.'];
+                $response = ['status' => 'error', 'message' => 'No requests were marked as Completed. Ensure the selected requests are in To Release status.'];
             }
             break;
 
         case 'bulk_reject':
+            if ($_SESSION['role'] !== 'registrar' && $_SESSION['role'] !== 'staff') {
+                $response = ['status' => 'error', 'message' => 'Unauthorized action.'];
+                break;
+            }
             $ids = isset($_POST['ids']) ? array_map('intval', explode(',', $_POST['ids'])) : [];
             $rejection_reason = trim($_POST['rejection_reason']);
             if (empty($ids)) {
@@ -611,15 +748,15 @@ try {
     }
 } catch (Exception $e) {
     $response = ['status' => 'error', 'message' => 'An error occurred: ' . $e->getMessage()];
+    error_log("Error in request_management.php: " . $e->getMessage());
 }
 
-// Output the response
+// Clean output buffer and send response
 ob_end_clean();
-header('Content-Type: application/json');
 echo json_encode($response);
 
 // Close database connection
 if (isset($conn)) {
     $conn->close();
 }
-exit();
+?>

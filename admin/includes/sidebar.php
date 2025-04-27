@@ -1,19 +1,19 @@
 <div class="sidebar">
     <div class="side-content">
         <div class="profile">
-            <!-- Logo -->
-            <div class="profile-img bg-img" style="background-image: url(../assets/images/Logo.png);"></div>
+            <!-- Updated Logo -->
+            <div class="profile-img bg-img" style="background-image: url(../assets/images/logo.png);"></div>
             <h5>BPC Document Request System</h5>
         </div>
         <div class="side-menu">
             <ul class="container">
                 <li>
-                    <a href="dashboard.php" class="<?php echo (isset($page_title) && $page_title === 'Registrar Dashboard') ? 'active' : ''; ?>">
+                    <a href="dashboard.php" class="<?php echo (isset($page_title) && $page_title === 'Admin Dashboard') ? 'active' : ''; ?>">
                         <i class="fa-solid fa-house"></i>
                         <small>Dashboard</small>
                     </a>
                 </li>
-                <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
+                <?php if (in_array($_SESSION['role'], ['registrar', 'staff'])): ?>
                     <li>
                         <a href="request.php" class="<?php echo (isset($page_title) && $page_title === 'Document Request Management') ? 'active' : ''; ?>">
                             <i class="fa-solid fa-file-signature"></i>
@@ -27,13 +27,21 @@
                         </a>
                     </li>
                 <?php endif; ?>
+                <?php if (in_array($_SESSION['role'], ['registrar', 'cashier'])): ?>
+                    <li>
+                        <a href="payment.php" class="<?php echo (isset($page_title) && $page_title === 'Payment Management') ? 'active' : ''; ?>">
+                            <i class="fa-solid fa-file-signature"></i>
+                            <small>Payment Management</small>
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <li>
                     <a href="payment_logs.php" class="<?php echo (isset($page_title) && $page_title === 'Payment Logs') ? 'active' : ''; ?>">
                         <i class="fa-solid fa-money-check-alt"></i>
                         <small>Payment Logs</small>
                     </a>
                 </li>
-                <?php if ($_SESSION['role'] === 'registrar' || $_SESSION['role'] === 'staff'): ?>
+                <?php if (in_array($_SESSION['role'], ['registrar', 'staff'])): ?>
                     <!-- Settings with Bootstrap Dropdown -->
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle <?php echo (isset($page_title) && in_array($page_title, ['Document Management', 'Academic Management', 'Users Management'])) ? 'active' : ''; ?>" id="settingsDropdown" data-bs-toggle="dropdown" aria-expanded="false">

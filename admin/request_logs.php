@@ -131,6 +131,7 @@ while ($row = $archived_result->fetch_assoc()) {
                         <option value="Pending" <?php echo $status_filter === 'Pending' ? 'selected' : ''; ?>>Pending</option>
                         <option value="In Process" <?php echo $status_filter === 'In Process' ? 'selected' : ''; ?>>In Process</option>
                         <option value="Ready to Pickup" <?php echo $status_filter === 'Ready to Pickup' ? 'selected' : ''; ?>>Ready to Pickup</option>
+                        <option value="To Release" <?php echo $status_filter === 'To Release' ? 'selected' : ''; ?>>To Release</option>
                         <option value="Completed" <?php echo $status_filter === 'Completed' ? 'selected' : ''; ?>>Completed</option>
                         <option value="Rejected" <?php echo $status_filter === 'Rejected' ? 'selected' : ''; ?>>Rejected</option>
                     </select>
@@ -205,6 +206,9 @@ while ($row = $archived_result->fetch_assoc()) {
                                                                 case 'ready to pickup':
                                                                     echo 'bg-success';
                                                                     break;
+                                                                case 'to release':
+                                                                    echo 'bg-success';
+                                                                    break;
                                                                 case 'completed':
                                                                     echo 'bg-primary';
                                                                     break;
@@ -240,7 +244,7 @@ while ($row = $archived_result->fetch_assoc()) {
                             </a>
                         </li>
                         <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                            <li class="page-item <?php echo $i === 'page' ? 'active' : ''; ?>">
+                            <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
                                 <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>"><?php echo $i; ?></a>
                             </li>
                         <?php endfor; ?>
@@ -286,6 +290,7 @@ while ($row = $archived_result->fetch_assoc()) {
                         <p><strong>Requested Date:</strong> <span id="modal-requested-date"></span></p>
                         <p><strong>Status:</strong> <span id="modal-status"></span></p>
                         <p><strong>Payment Status:</strong> <span id="modal-payment-status"></span></p>
+                        <p><strong>Payment Method:</strong> <span id="modal-payment-method"></span></p>
                         <p><strong>Reason for Request:</strong> <span id="modal-remarks"></span></p>
                         <p><strong>Uploaded File:</strong> <span id="modal-file"></span></p>
                         <p><strong>Rejection Reason:</strong> <span id="modal-rejection-reason"></span></p>
@@ -350,6 +355,9 @@ while ($row = $archived_result->fetch_assoc()) {
                                                                 case 'ready to pickup':
                                                                     echo 'bg-success';
                                                                     break;
+                                                                case 'to release':
+                                                                    echo 'bg-success';
+                                                                    break;
                                                                 case 'completed':
                                                                     echo 'bg-primary';
                                                                     break;
@@ -383,51 +391,85 @@ while ($row = $archived_result->fetch_assoc()) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-    // Toggle all checkboxes
-    function toggleSelectAll() {
-        const selectAll = document.getElementById('select-all');
-        const checkboxes = document.querySelectorAll('.request-checkbox');
-        checkboxes.forEach(checkbox => checkbox.checked = selectAll.checked);
-    }
+// Toggle all checkboxes
+function toggleSelectAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.request-checkbox');
+    checkboxes.forEach(checkbox => checkbox.checked = selectAll.checked);
+}
 
-    // Function to show a processing message
-    function showProcessingMessage(message) {
-        const processingDiv = document.createElement('div');
-        processingDiv.id = 'processing-message';
-        processingDiv.style.position = 'fixed';
-        processingDiv.style.top = '50%';
-        processingDiv.style.left = '50%';
-        processingDiv.style.transform = 'translate(-50%, -50%)';
-        processingDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        processingDiv.style.color = 'white';
-        processingDiv.style.padding = '20px';
-        processingDiv.style.borderRadius = '5px';
-        processingDiv.style.zIndex = '1000';
-        processingDiv.textContent = message;
-        document.body.appendChild(processingDiv);
-    }
+// Function to show a processing message
+function showProcessingMessage(message) {
+    const processingDiv = document.createElement('div');
+    processingDiv.id = 'processing-message';
+    processingDiv.style.position = 'fixed';
+    processingDiv.style.top = '50%';
+    processingDiv.style.left = '50%';
+    processingDiv.style.transform = 'translate(-50%, -50%)';
+    processingDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    processingDiv.style.color = 'white';
+    processingDiv.style.padding = '20px';
+    processingDiv.style.borderRadius = '5px';
+    processingDiv.style.zIndex = '1000';
+    processingDiv.textContent = message;
+    document.body.appendChild(processingDiv);
+}
 
-    function hideProcessingMessage() {
-        const processingDiv = document.getElementById('processing-message');
-        if (processingDiv) processingDiv.remove();
-    }
+function hideProcessingMessage() {
+    const processingDiv = document.getElementById('processing-message');
+    if (processingDiv) processingDiv.remove();
+}
 
-    // Bulk archive selected requests
-    function bulkArchive() {
+// Bulk archive selected requests
+function bulkArchive() {
+    const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    if (selected.length === 0) {
+        alert('Please select at least one request to archive.');
+        return;
+    }
+    if (confirm(`Archive ${selected.length} selected request(s)?`)) {
+        showProcessingMessage('Archiving requests... Please wait.');
+        fetch('request_actions.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `action=bulk_archive&ids=${selected.join(',')}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideProcessingMessage();
+                if (data.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                hideProcessingMessage();
+                alert('Failed to archive requests: ' + error.message);
+            });
+    }
+}
+
+<?php if ($_SESSION['role'] === 'registrar'): ?>
+    // Bulk delete selected requests
+    function bulkDelete() {
         const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
             .map(checkbox => checkbox.value);
         if (selected.length === 0) {
-            alert('Please select at least one request to archive.');
+            alert('Please select at least one request to delete.');
             return;
         }
-        if (confirm(`Archive ${selected.length} selected request(s)?`)) {
-            showProcessingMessage('Archiving requests... Please wait.');
+        if (confirm(`Delete ${selected.length} selected request(s)? This action cannot be undone.`)) {
+            showProcessingMessage('Deleting requests... Please wait.');
             fetch('request_actions.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
                     },
-                    body: `action=bulk_archive&ids=${selected.join(',')}`
+                    body: `action=bulk_delete&ids=${selected.join(',')}`
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -440,241 +482,215 @@ while ($row = $archived_result->fetch_assoc()) {
                 })
                 .catch(error => {
                     hideProcessingMessage();
-                    alert('Failed to archive requests: ' + error.message);
+                    alert('Failed to delete requests: ' + error.message);
                 });
         }
     }
+<?php endif; ?>
 
-    <?php if ($_SESSION['role'] === 'registrar'): ?>
-        // Bulk delete selected requests
-        function bulkDelete() {
-            const selected = Array.from(document.querySelectorAll('.request-checkbox:checked'))
-                .map(checkbox => checkbox.value);
-            if (selected.length === 0) {
-                alert('Please select at least one request to delete.');
-                return;
-            }
-            if (confirm(`Delete ${selected.length} selected request(s)? This action cannot be undone.`)) {
-                showProcessingMessage('Deleting requests... Please wait.');
-                fetch('request_actions.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
-                        body: `action=bulk_delete&ids=${selected.join(',')}`
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        hideProcessingMessage();
-                        if (data.status === 'success') {
-                            location.reload();
-                        } else {
-                            alert('Error: ' + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        hideProcessingMessage();
-                        alert('Failed to delete requests: ' + error.message);
-                    });
-            }
-        }
-    <?php endif; ?>
-
-    // Individual archive function
-    document.querySelectorAll('.archive-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const requestId = this.dataset.id;
-            if (confirm(`Archive request ID: ${requestId}?`)) {
-                showProcessingMessage('Archiving request... Please wait.');
-                fetch('request_actions.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
-                        body: `action=archive&id=${requestId}`
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        hideProcessingMessage();
-                        if (data.status === 'success') {
-                            location.reload();
-                        } else {
-                            alert('Error: ' + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        hideProcessingMessage();
-                        alert('Failed to archive request: ' + error.message);
-                    });
-            }
-        });
-    });
-
-    <?php if ($_SESSION['role'] === 'registrar'): ?>
-        // Individual delete function
-        document.querySelectorAll('.delete-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const requestId = this.dataset.id;
-                if (confirm(`Delete request ID: ${requestId}? This action cannot be undone.`)) {
-                    showProcessingMessage('Deleting request... Please wait.');
-                    fetch('request_actions.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded'
-                            },
-                            body: `action=delete&id=${requestId}`
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            hideProcessingMessage();
-                            if (data.status === 'success') {
-                                location.reload();
-                            } else {
-                                alert('Error: ' + data.message);
-                            }
-                        })
-                        .catch(error => {
-                            hideProcessingMessage();
-                            alert('Failed to delete request: ' + error.message);
-                        });
-                }
-            });
-        });
-    <?php endif; ?>
-
-    // Retrieve (unarchive) a request
-    document.querySelectorAll('.retrieve-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const requestId = this.dataset.id;
-            if (confirm(`Retrieve request ID: ${requestId} from archive?`)) {
-                showProcessingMessage('Retrieving request... Please wait.');
-                fetch('request_actions.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
-                        body: `action=retrieve&id=${requestId}`
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        hideProcessingMessage();
-                        if (data.status === 'success') {
-                            location.reload();
-                        } else {
-                            alert('Error: ' + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        hideProcessingMessage();
-                        alert('Failed to retrieve request: ' + error.message);
-                    });
-            }
-        });
-    });
-
-    // Populate view modal
-    document.querySelectorAll('.view-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const id = this.dataset.id;
-            fetch(`request_actions.php?action=get&id=${id}`)
+// Individual archive function
+document.querySelectorAll('.archive-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const requestId = this.dataset.id;
+        if (confirm(`Archive request ID: ${requestId}?`)) {
+            showProcessingMessage('Archiving request... Please wait.');
+            fetch('request_actions.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `action=archive&id=${requestId}`
+                })
                 .then(response => response.json())
                 .then(data => {
+                    hideProcessingMessage();
                     if (data.status === 'success') {
-                        const request = data.data;
-                        // Student Information
-                        document.getElementById('modal-student-name').textContent = request.student_name;
-                        document.getElementById('modal-email').textContent = request.email || 'N/A';
-                        document.getElementById('modal-number').textContent = request.number || 'N/A';
-                        document.getElementById('modal-course').textContent = request.course_name || 'N/A';
-                        document.getElementById('modal-section').textContent = request.section_name || 'N/A';
-                        document.getElementById('modal-school-year').textContent = request.school_year || 'N/A';
-                        document.getElementById('modal-year-level').textContent = request.year_level || 'N/A';
-                        // Request Information
-                        document.getElementById('modal-id').textContent = request.id;
-                        document.getElementById('modal-document-type').textContent = request.document_type;
-                        document.getElementById('modal-price').textContent = '₱' + parseFloat(request.unit_price).toFixed(2);
-                        document.getElementById('modal-requested-date').textContent = new Date(request.requested_date).toLocaleDateString('en-US', {
-                            month: 'long',
-                            day: 'numeric',
-                            year: 'numeric'
-                        });
-                        document.getElementById('modal-status').textContent = request.status;
-                        document.getElementById('modal-payment-status').textContent = request.payment_status || 'N/A';
-                        document.getElementById('modal-remarks').textContent = request.remarks || 'N/A';
-                        const fileSpan = document.getElementById('modal-file');
-                        if (request.file_path) {
-                            fileSpan.innerHTML = `<a href="../${request.file_path}" target="_blank" download>Download File</a>`;
-                        } else {
-                            fileSpan.textContent = 'No file uploaded';
-                        }
-                        document.getElementById('modal-rejection-reason').textContent = request.rejection_reason || 'N/A';
-                        // QR Code
-                        const qrCodeDiv = document.getElementById('modal-qr-code');
-                        const qrCodeCanvas = document.getElementById('qr-code-canvas');
-                        qrCodeCanvas.innerHTML = ''; // Clear previous QR code
-                        if (request.status === 'Ready to Pickup') {
-                            qrCodeDiv.style.display = 'block';
-                            new QRCode(qrCodeCanvas, {
-                                text: `request_id:${request.id}`,
-                                width: 150,
-                                height: 150
-                            });
-                        } else {
-                            qrCodeDiv.style.display = 'none';
-                        }
+                        location.reload();
                     } else {
                         alert('Error: ' + data.message);
                     }
                 })
-                .catch(error => alert('Failed to load request details: ' + error.message));
-        });
+                .catch(error => {
+                    hideProcessingMessage();
+                    alert('Failed to archive request: ' + error.message);
+                });
+        }
     });
+});
 
-    // Date validation
-    document.addEventListener('DOMContentLoaded', function() {
-        const startDateInput = document.getElementById('start_date');
-        const endDateInput = document.getElementById('end_date');
-        const dateError = document.getElementById('date-error');
-        const filterForm = document.getElementById('filterForm');
-        const today = new Date().toISOString().split('T')[0]; // e.g., '2025-04-19'
-
-        // Set max attribute to today
-        startDateInput.max = today;
-        endDateInput.max = today;
-
-        // Validate dates on form submission
-        filterForm.addEventListener('submit', function(event) {
-            const startDate = startDateInput.value;
-            const endDate = endDateInput.value;
-
-            if (startDate && endDate && startDate > endDate) {
-                event.preventDefault();
-                dateError.textContent = 'End date cannot be before start date.';
-                dateError.style.display = 'block';
-            } else {
-                dateError.style.display = 'none';
+<?php if ($_SESSION['role'] === 'registrar'): ?>
+    // Individual delete function
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const requestId = this.dataset.id;
+            if (confirm(`Delete request ID: ${requestId}? This action cannot be undone.`)) {
+                showProcessingMessage('Deleting request... Please wait.');
+                fetch('request_actions.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: `action=delete&id=${requestId}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        hideProcessingMessage();
+                        if (data.status === 'success') {
+                            location.reload();
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        hideProcessingMessage();
+                        alert('Failed to delete request: ' + error.message);
+                    });
             }
         });
+    });
+<?php endif; ?>
 
-        // Clear error on input change
-        startDateInput.addEventListener('change', function() {
+// Retrieve (unarchive) a request
+document.querySelectorAll('.retrieve-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const requestId = this.dataset.id;
+        if (confirm(`Retrieve request ID: ${requestId} from archive?`)) {
+            showProcessingMessage('Retrieving request... Please wait.');
+            fetch('request_actions.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `action=retrieve&id=${requestId}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    hideProcessingMessage();
+                    if (data.status === 'success') {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    hideProcessingMessage();
+                    alert('Failed to retrieve request: ' + error.message);
+                });
+        }
+    });
+});
+
+// Populate view modal
+document.querySelectorAll('.view-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const id = this.dataset.id;
+        fetch(`request_actions.php?action=get&id=${id}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const request = data.data;
+                    // Student Information
+                    document.getElementById('modal-student-name').textContent = request.student_name || 'N/A';
+                    document.getElementById('modal-email').textContent = request.email || 'N/A';
+                    document.getElementById('modal-number').textContent = request.number || 'N/A';
+                    document.getElementById('modal-course').textContent = request.course_name || 'N/A';
+                    document.getElementById('modal-section').textContent = request.section_name || 'N/A';
+                    document.getElementById('modal-school-year').textContent = request.school_year || 'N/A';
+                    document.getElementById('modal-year-level').textContent = request.year_level || 'N/A';
+                    // Request Information
+                    document.getElementById('modal-id').textContent = request.id;
+                    document.getElementById('modal-document-type').textContent = request.document_type || 'N/A';
+                    document.getElementById('modal-price').textContent = '₱' + parseFloat(request.unit_price).toFixed(2);
+                    document.getElementById('modal-requested-date').textContent = new Date(request.requested_date).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+                    document.getElementById('modal-status').textContent = request.status || 'N/A';
+                    document.getElementById('modal-payment-status').textContent = request.payment_status ? ucwords(request.payment_status.replace('_', ' ')) : 'N/A';
+                    document.getElementById('modal-payment-method').textContent = request.payment_method ? ucwords(request.payment_method.replace('_', ' ')) : 'N/A';
+                    document.getElementById('modal-remarks').textContent = request.remarks || 'N/A';
+                    const fileSpan = document.getElementById('modal-file');
+                    if (request.file_path) {
+                        fileSpan.innerHTML = `<a href="../${request.file_path}" target="_blank" download>Download File</a>`;
+                    } else {
+                        fileSpan.textContent = 'No file uploaded';
+                    }
+                    document.getElementById('modal-rejection-reason').textContent = request.rejection_reason || 'N/A';
+                    // QR Code
+                    const qrCodeDiv = document.getElementById('modal-qr-code');
+                    const qrCodeCanvas = document.getElementById('qr-code-canvas');
+                    qrCodeCanvas.innerHTML = ''; // Clear previous QR code
+                    if (request.status === 'Ready to Pickup') {
+                        qrCodeDiv.style.display = 'block';
+                        new QRCode(qrCodeCanvas, {
+                            text: `request_id:${request.id}`,
+                            width: 150,
+                            height: 150
+                        });
+                    } else {
+                        qrCodeDiv.style.display = 'none';
+                    }
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => alert('Failed to load request details: ' + error.message));
+    });
+});
+
+// Utility function to capitalize words
+function ucwords(str) {
+    return str.toLowerCase().replace(/(^([a-zA-Z\p{M}]))|([ -][a-zA-Z\p{M}])/g, function(s) {
+        return s.toUpperCase();
+    });
+}
+
+// Date validation
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    const dateError = document.getElementById('date-error');
+    const filterForm = document.getElementById('filterForm');
+    const today = new Date().toISOString().split('T')[0]; // e.g., '2025-04-27'
+
+    // Set max attribute to today
+    startDateInput.max = today;
+    endDateInput.max = today;
+
+    // Validate dates on form submission
+    filterForm.addEventListener('submit', function(event) {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+
+        if (startDate && endDate && startDate > endDate) {
+            event.preventDefault();
+            dateError.textContent = 'End date cannot be before start date.';
+            dateError.style.display = 'block';
+        } else {
             dateError.style.display = 'none';
-        });
-        endDateInput.addEventListener('change', function() {
-            dateError.style.display = 'none';
-        });
+        }
     });
 
-    // Download QR Code
-    function downloadQRCode() {
-        const qrCanvas = document.querySelector('#qr-code-canvas canvas');
-        if (qrCanvas) {
-            const link = document.createElement('a');
-            link.href = qrCanvas.toDataURL('image/png');
-            link.download = `request_qr_${document.getElementById('modal-id').textContent}.png`;
-            link.click();
-        }
+    // Clear error on input change
+    startDateInput.addEventListener('change', function() {
+        dateError.style.display = 'none';
+    });
+    endDateInput.addEventListener('change', function() {
+        dateError.style.display = 'none';
+    });
+});
+
+// Download QR Code
+function downloadQRCode() {
+    const qrCanvas = document.querySelector('#qr-code-canvas canvas');
+    if (qrCanvas) {
+        const link = document.createElement('a');
+        link.href = qrCanvas.toDataURL('image/png');
+        link.download = `request_qr_${document.getElementById('modal-id').textContent}.png`;
+        link.click();
     }
+}
 </script>
 
 <?php require 'includes/footer.php'; ?>
